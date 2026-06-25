@@ -18,6 +18,158 @@ let HERO_AUTOPLAY_TIMER = null;
 const $ = (selector, scope = document) => scope.querySelector(selector);
 const $$ = (selector, scope = document) => Array.from(scope.querySelectorAll(selector));
 
+const EXTRA_TRANSLATIONS = {
+  en: {
+    'search.keyword':'Keyword','search.offerType':'Offer Type','search.type':'Type','search.state':'State','search.price':'Price','search.placeholder':'Search by keyword','search.allTypes':'All types','search.anyPrice':'Any price','cat.land':'Land','cat.offices':'Offices','cat.commercial':'Commercial','section.mustSee.title':'Must-See Properties','section.mustSee.sub':'Explore the most sought-after properties, carefully selected for you.','admin.heroFeatured':'Show in homepage top slider','admin.heroOrder':'Top slider order (1–8)','home.bottom.kicker':'Need help choosing?','home.bottom.title':'Tell us what you need.','home.bottom.sub':'Share your budget, location and property type. Rostom Immobilier will guide you to the right option with a clean, direct process.','home.bottom.primary':'Contact us','home.bottom.secondary':'Browse properties'
+  },
+  fr: {
+    'search.keyword':'Mot-clé','search.offerType':'Type d’offre','search.type':'Type','search.state':'Wilaya','search.price':'Prix','search.placeholder':'Rechercher par mot-clé','search.allTypes':'Tous les types','search.anyPrice':'Tous les prix','cat.land':'Terrain','cat.offices':'Bureaux','cat.commercial':'Commercial','section.mustSee.title':'Biens incontournables','section.mustSee.sub':'Découvrez les biens les plus demandés, sélectionnés avec soin pour vous.','admin.heroFeatured':'Afficher dans le slider principal de la page d’accueil','admin.heroOrder':'Ordre du slider principal (1–8)','home.bottom.kicker':'Besoin d’aide pour choisir ?','home.bottom.title':'Dites-nous ce qu’il vous faut.','home.bottom.sub':'Partagez votre budget, la localisation et le type de bien. Rostom Immobilier vous guide vers la bonne option avec une démarche simple et directe.','home.bottom.primary':'Contactez-nous','home.bottom.secondary':'Voir les biens'
+  },
+  ar: {
+    'search.keyword':'كلمة البحث','search.offerType':'نوع العرض','search.type':'النوع','search.state':'الولاية','search.price':'السعر','search.placeholder':'ابحث بكلمة مفتاحية','search.allTypes':'كل الأنواع','search.anyPrice':'كل الأسعار','cat.land':'أرض','cat.offices':'مكاتب','cat.commercial':'تجاري','section.mustSee.title':'عقارات لا تفوّت','section.mustSee.sub':'اكتشف أكثر العقارات طلبًا، مختارة بعناية من أجلك.','admin.heroFeatured':'إظهار العقار في السلايدر الرئيسي للصفحة الرئيسية','admin.heroOrder':'ترتيب السلايدر الرئيسي (1–8)','home.bottom.kicker':'تحتاج مساعدة في الاختيار؟','home.bottom.title':'أخبرنا ماذا تحتاج.','home.bottom.sub':'أرسل الميزانية، المكان ونوع العقار. روستم للعقارات يوجهك للخيار المناسب بطريقة بسيطة ومباشرة.','home.bottom.primary':'تواصل معنا','home.bottom.secondary':'تصفح العقارات'
+  }
+};
+
+Object.assign(EXTRA_TRANSLATIONS.en, {
+  'home.cities.kicker':'Popular cities',
+  'home.cities.title':'Find properties in these cities',
+  'home.cities.sub':'Explore properties in the main locations we serve. Choose a city and start browsing.',
+  'home.cities.properties':'Properties',
+  'home.why.kicker':'Why choose us',
+  'home.why.title':'Why choose Rostom Immobilier?',
+  'home.why.trust.title':'Trusted expertise',
+  'home.why.trust.sub':'Clear guidance to connect buyers, renters and owners with confidence.',
+  'home.why.offer.title':'A diverse offer',
+  'home.why.offer.sub':'Houses, apartments, villas, land and more options for every need.',
+  'home.why.personal.title':'Personalized experience',
+  'home.why.personal.sub':'Simple tools, useful filters and direct contact for faster decisions.'
+});
+Object.assign(EXTRA_TRANSLATIONS.fr, {
+  'home.cities.kicker':'Villes populaires',
+  'home.cities.title':'Trouvez des propriétés dans ces villes',
+  'home.cities.sub':'Découvrez des biens immobiliers dans les principales localités que nous desservons. Choisissez votre ville et commencez votre exploration.',
+  'home.cities.properties':'Propriétés',
+  'home.why.kicker':'Pourquoi nous choisir',
+  'home.why.title':'Pourquoi choisir Rostom Immobilier ?',
+  'home.why.trust.title':'Une expertise de confiance',
+  'home.why.trust.sub':'Un accompagnement clair pour connecter acheteurs, locataires et propriétaires en confiance.',
+  'home.why.offer.title':'Une offre diversifiée',
+  'home.why.offer.sub':'Maisons, appartements, villas, terrains et plus d’options pour chaque besoin.',
+  'home.why.personal.title':'Une expérience personnalisée',
+  'home.why.personal.sub':'Des outils simples, des filtres utiles et un contact direct pour décider plus vite.'
+});
+Object.assign(EXTRA_TRANSLATIONS.ar, {
+  'home.cities.kicker':'مدن رائجة',
+  'home.cities.title':'اعثر على عقارات في هذه المدن',
+  'home.cities.sub':'اكتشف عقارات في أهم المناطق التي نخدمها. اختر المدينة وابدأ التصفح.',
+  'home.cities.properties':'عقارات',
+  'home.why.kicker':'لماذا تختارنا',
+  'home.why.title':'لماذا تختار روستم للعقارات؟',
+  'home.why.trust.title':'خبرة موثوقة',
+  'home.why.trust.sub':'توجيه واضح يربط المشترين والمستأجرين والمالكين بثقة.',
+  'home.why.offer.title':'عروض متنوعة',
+  'home.why.offer.sub':'منازل، شقق، فيلات، أراضٍ وخيارات أخرى لكل حاجة.',
+  'home.why.personal.title':'تجربة شخصية',
+  'home.why.personal.sub':'أدوات بسيطة، فلاتر مفيدة وتواصل مباشر لقرارات أسرع.'
+});
+
+
+Object.assign(EXTRA_TRANSLATIONS.en, {
+  'home.latest.kicker':'Latest properties',
+  'home.latest.title':'Explore our latest properties',
+  'home.latest.sub':'Discover a selection of our latest available properties.',
+  'home.latest.view':'View all properties',
+  'home.latest.viewSub':'Explore all our offers in one click.',
+  'home.handpicked.kicker':'Selected for you',
+  'home.handpicked.title':'Discover our handpicked properties',
+  'home.handpicked.sub':'A carefully selected collection to meet your real estate expectations. Scroll to explore the best deals.',
+  'home.about.kicker':'About us',
+  'home.about.titleA':'About',
+  'home.about.sub':'Rostom Immobilier helps clients in Algeria find clear, verified and well-presented properties with fast contact, modern browsing and simple guidance.',
+  'home.about.point1':'Clean property cards',
+  'home.about.point2':'Fast filtering',
+  'home.about.point3':'360° tours when available',
+  'ai.nudge':'Can I help you?',
+  'ai.title':'Rostom AI',
+  'ai.subtitle':'Ask me about buying, renting, budget, location or available listings.',
+  'ai.welcome':'Hello! I can help you find a property, compare options, or answer questions about buying and renting in Algeria. Tell me your budget, city and property type.',
+  'ai.placeholder':'Write your need…',
+  'ai.send':'Send',
+  'ai.clear':'Clear',
+  'ai.results':'I found these options from our website:',
+  'ai.noResults':'I did not find a strong match inside the current website listings. Try adding the city, budget, property type or number of rooms.',
+  'ai.onlySite':'Powered by free no-key AI. Property suggestions stay based on this website’s listings.'
+});
+Object.assign(EXTRA_TRANSLATIONS.fr, {
+  'home.latest.kicker':'Dernières annonces',
+  'home.latest.title':'Découvrez nos derniers biens',
+  'home.latest.sub':'Une sélection de nos biens immobiliers les plus récents.',
+  'home.latest.view':'Voir tous les biens',
+  'home.latest.viewSub':'Explorez toutes nos offres en un clic.',
+  'home.handpicked.kicker':'Sélection pour vous',
+  'home.handpicked.title':'Découvrez nos biens sélectionnés',
+  'home.handpicked.sub':'Une collection soigneusement choisie pour répondre à vos attentes immobilières. Faites défiler pour voir les meilleures offres.',
+  'home.about.kicker':'À propos',
+  'home.about.titleA':'À propos de',
+  'home.about.sub':'Rostom Immobilier aide les clients en Algérie à trouver des biens clairs, vérifiés et bien présentés avec un contact rapide, une navigation moderne et un accompagnement simple.',
+  'home.about.point1':'Cartes de biens claires',
+  'home.about.point2':'Filtres rapides',
+  'home.about.point3':'Visites 360° disponibles',
+  'ai.nudge':'Puis-je vous aider ?',
+  'ai.title':'Rostom AI',
+  'ai.subtitle':'Demandez-moi un achat, une location, un budget, une ville ou les annonces disponibles.',
+  'ai.welcome':'Bonjour ! Je peux vous aider à trouver un bien, comparer des options ou répondre sur l’achat et la location en Algérie. Indiquez votre budget, la ville et le type de bien.',
+  'ai.placeholder':'Écrivez votre besoin…',
+  'ai.send':'Envoyer',
+  'ai.clear':'Effacer',
+  'ai.results':'J’ai trouvé ces options sur notre site :',
+  'ai.noResults':'Je n’ai pas trouvé de correspondance forte dans les annonces actuelles. Ajoutez la ville, le budget, le type de bien ou le nombre de pièces.',
+  'ai.onlySite':'Propulsé par une IA gratuite sans clé API. Les suggestions restent basées sur les annonces du site.'
+});
+Object.assign(EXTRA_TRANSLATIONS.ar, {
+  'home.latest.kicker':'أحدث العقارات',
+  'home.latest.title':'اكتشف أحدث العقارات لدينا',
+  'home.latest.sub':'مجموعة من أحدث العقارات المتوفرة عندنا.',
+  'home.latest.view':'عرض كل العقارات',
+  'home.latest.viewSub':'تصفح كل العروض بنقرة واحدة.',
+  'home.handpicked.kicker':'مختارة لك',
+  'home.handpicked.title':'اكتشف عقارات مختارة بعناية',
+  'home.handpicked.sub':'مجموعة مختارة لتناسب احتياجاتك العقارية. اسحب لاكتشاف أفضل العروض.',
+  'home.about.kicker':'من نحن',
+  'home.about.titleA':'حول',
+  'home.about.sub':'روستم للعقارات يساعد الزبائن في الجزائر على إيجاد عقارات واضحة، موثوقة ومعروضة بطريقة حديثة مع تواصل سريع وتوجيه بسيط.',
+  'home.about.point1':'بطاقات عقارات واضحة',
+  'home.about.point2':'فلاتر سريعة',
+  'home.about.point3':'جولات 360° عند توفرها',
+  'ai.nudge':'هل يمكنني مساعدتك؟',
+  'ai.title':'Rostom AI',
+  'ai.subtitle':'اسألني عن الشراء، الكراء، الميزانية، المدينة أو العقارات المتوفرة.',
+  'ai.welcome':'مرحبا! يمكنني مساعدتك في إيجاد عقار، مقارنة الخيارات أو الإجابة عن الشراء والكراء في الجزائر. اكتب الميزانية، المدينة ونوع العقار.',
+  'ai.placeholder':'اكتب طلبك…',
+  'ai.send':'إرسال',
+  'ai.clear':'مسح',
+  'ai.results':'وجدت لك هذه الخيارات من موقعنا:',
+  'ai.noResults':'لم أجد تطابقًا قويًا داخل العقارات الحالية. أضف المدينة، الميزانية، نوع العقار أو عدد الغرف.',
+  'ai.onlySite':'مدعوم بذكاء اصطناعي مجاني بدون مفتاح API. اقتراحات العقارات تبقى مبنية على إعلانات الموقع.'
+});
+
+function extraText(key){
+  const lang = typeof currentLang === 'function' ? currentLang() : 'en';
+  return EXTRA_TRANSLATIONS[lang]?.[key] || EXTRA_TRANSLATIONS.en[key] || key;
+}
+function applyExtraTranslations(){
+  $$('[data-home-i18n]').forEach(el => { el.textContent = extraText(el.dataset.homeI18n); });
+  $$('[data-home-i18n-placeholder]').forEach(el => { el.setAttribute('placeholder', extraText(el.dataset.homeI18nPlaceholder)); });
+}
+function bindExtraTranslationRefresh(){
+  $$('.language-select').forEach(sel => {
+    if(sel.dataset.extraTranslationBound) return;
+    sel.dataset.extraTranslationBound = 'yes';
+    sel.addEventListener('change', () => setTimeout(applyExtraTranslations, 0));
+  });
+}
+
+
 function showPageLoader(){
   if($('#pageLoader')) return;
   const loader = document.createElement('div');
@@ -108,7 +260,18 @@ function propertyUrl(id){ return `${ROOT}pages/property.html?id=${encodeURICompo
 function langLocale(){ return currentLang()==='ar' ? 'ar-DZ' : currentLang()==='fr' ? 'fr-DZ' : 'en-DZ'; }
 function formatPrice(p){ const n = Number(String(p||'').replace(/\s/g,'')); return Number.isNaN(n) ? safeText(p) : new Intl.NumberFormat(langLocale()).format(n); }
 function statusLabel(status){ return status === 'rent' ? t('card.forRent') : status === 'new' ? t('card.new') : t('card.forSale'); }
-function catLabel(cat){ return {estates:t('cat.estates'),houses:t('cat.houses'),apartments:t('cat.apartments'),villas:t('cat.villas'),land:t('cat.land'),offices:t('cat.offices'),commercial:t('cat.commercial')}[cat] || t('cat.estates'); }
+function catLabel(cat){ const extra = {en:{land:'Land',offices:'Offices',commercial:'Commercial'},fr:{land:'Terrain',offices:'Bureaux',commercial:'Commercial'},ar:{land:'أراضي',offices:'مكاتب',commercial:'تجاري'}}; return {estates:t('cat.estates'),houses:t('cat.houses'),apartments:t('cat.apartments'),villas:t('cat.villas'),...(extra[currentLang()]||extra.en)}[cat] || t('cat.estates'); }
+function statusTypeLabel(p){ return `${statusLabel(p?.status)} · ${catLabel(p?.category)}`; }
+function propertyLocation(p){ return [p?.commune, wilayaDisplay(p?.wilaya)].filter(Boolean).map(safeText).join(', ') || safeText(p?.address || 'Algeria'); }
+function cardIcon(name){
+  const icons = {
+    pin:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Zm0-8.5A3.5 3.5 0 1 1 12 6a3.5 3.5 0 0 1 0 7.5Z"/></svg>',
+    bed:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11V5h2v5h6V7h6a4 4 0 0 1 4 4v7h-2v-3H5v3H3v-7Zm2 2h14v-2a2 2 0 0 0-2-2h-4v3H5v1Z"/></svg>',
+    bath:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4a3 3 0 0 1 6 0v5h8v2h-1l-1 5a5 5 0 0 1-4.9 4H9.9A5 5 0 0 1 5 16l-1-5H3V9h8V4a1 1 0 1 0-2 0v1H7V4Zm-.9 7 .8 4.6A3 3 0 0 0 9.9 18h4.2a3 3 0 0 0 3-2.4l.8-4.6H6.1Z"/></svg>',
+    area:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v2H6v5H4V4Zm14 2h-5V4h7v7h-2V6ZM6 13v5h5v2H4v-7h2Zm14 0v7h-7v-2h5v-5h2Z"/></svg>'
+  };
+  return icons[name] || '';
+}
 function wilayaDisplay(value){
   const code = clean(value).split(' - ')[0];
   const w = LOCATION_DATA.wilayas.find(x => x.code === code);
@@ -266,14 +429,14 @@ function buildCard(p){
   ].filter(Boolean).map(m=>`<span>${cardIcon(m.icon)}${m.text}</span>`).join('');
   return `<article class="property-card reveal ${has360 ? 'has-360' : ''}" data-category="${safeText(p.category)}" data-status="${safeText(p.status)}" data-wilaya="${safeText(p.wilaya)}" data-commune="${safeText(p.commune)}">
     <a href="${propertyUrl(p.id)}" class="prop-media" aria-label="${safeText(t('card.details'))}">
-      ${img ? `<img src="${img}" alt="${safeText(p.title || t('property.generic'))}" loading="lazy">` : '<div class="no-img"></div>'}
+      ${img ? `<img src="${img}" alt="${safeText(p.title || 'Property')}" loading="lazy">` : '<div class="no-img"></div>'}
       <span class="badge ${p.status==='rent'?'rent':p.status==='new'?'new':''}">${safeText(statusTypeLabel(p))}</span>
       ${has360 ? `<span class="tour-pill" aria-label="${safeText(t('card.tour'))}">${safeText(t('card.tour'))}</span>` : ''}
       <span class="explore-dot">${safeText(t('card.details'))} →</span>
     </a>
     <div class="prop-body">
       <div class="prop-topline"><span>${safeText(statusTypeLabel(p))}</span><span>${safeText(wilayaDisplay(p.wilaya))}</span></div>
-      <h3 class="prop-title">${safeText(p.title || t('property.generic'))}</h3>
+      <h3 class="prop-title">${safeText(p.title || 'Property')}</h3>
       <p class="location prop-location-line">${cardIcon('pin')}<span>${propertyLocation(p)}</span></p>
       ${price ? `<p class="price">${price}</p>` : ''}
       ${meta ? `<div class="meta icon-meta">${meta}</div>` : ''}
@@ -356,7 +519,7 @@ function buildHeroSlide(p, index){
     <div class="container home-slide-content">
       <a class="hero-property-card" href="${propertyUrl(p.id)}">
         <p class="hero-status">${safeText(statusTypeLabel(p))}</p>
-        <h1>${safeText(p.title || t('property.generic'))}${price ? ` | ${price}` : ''}</h1>
+        <h1>${safeText(p.title || 'Property')}${price ? ` | ${price}` : ''}</h1>
         ${details ? `<div class="hero-specs">${details}</div>` : ''}
         <p class="hero-place">${cardIcon('pin')}<span>${propertyLocation(p)}</span></p>
         ${price ? `<p class="hero-price">${price}</p>` : ''}
@@ -372,7 +535,7 @@ function initHeroSlider(){
   if(HERO_AUTOPLAY_TIMER) clearInterval(HERO_AUTOPLAY_TIMER);
   if(!items.length){ slider.innerHTML = ''; if(dotsWrap) dotsWrap.innerHTML = ''; return; }
   slider.innerHTML = items.map(buildHeroSlide).join('');
-  if(dotsWrap) dotsWrap.innerHTML = items.map((_,i)=>`<button class="hero-dot ${i===0?'active':''}" type="button" aria-label="${safeText(t('gallery.goToProperty'))} ${i+1}" data-hero-dot="${i}"></button>`).join('');
+  if(dotsWrap) dotsWrap.innerHTML = items.map((_,i)=>`<button class="hero-dot ${i===0?'active':''}" type="button" aria-label="Go to property ${i+1}" data-hero-dot="${i}"></button>`).join('');
   const slides = $$('.home-slide', slider);
   const dots = $$('[data-hero-dot]');
   let index = 0;
@@ -458,7 +621,7 @@ function initVirtualTour(p){
   async function loadRoom(index){
     const room = rooms[index]; if(!room) return;
     viewerEl.classList.remove('hidden'); start.classList.add('hidden');
-    viewerEl.innerHTML = `<div class="tour-loading">${safeText(t('tour.loading'))}</div>`;
+    viewerEl.innerHTML = `<div class="tour-loading">Loading 360°…</div>`;
     $$('.tour-room').forEach(btn=>btn.classList.toggle('active', Number(btn.dataset.tourRoom) === index));
     try{ await loadPannellumAssets(); }catch(err){ console.warn(err); }
     if(window.pannellum){
@@ -489,8 +652,8 @@ function initVirtualTour(p){
 function buildPropertyGallery(p){
   const images = extractImageList([p.images, p.image, p.mainImage, p.coverImage, p.photo, p.photos, p.gallery]).map(imageSrc).filter(Boolean);
   if(!images.length) return `<div class="detail-image detail-main-photo empty-photo"></div>`;
-  const thumbs = images.map((img,i)=>`<button class="gallery-thumb ${i===0?'active':''}" type="button" data-gallery-index="${i}" aria-label="${safeText(t('gallery.photo'))} ${i+1}"><img src="${img}" alt="${safeText(p.title || t('gallery.photo'))} ${i+1}" loading="lazy"></button>`).join('');
-  return `<div class="detail-image detail-main-photo" id="detailMainPhoto" role="button" tabindex="0" aria-label="${safeText(t('property.openGallery'))}"><img id="detailMainImage" src="${images[0]}" alt="${safeText(p.title || t('property.generic'))}" data-gallery-index="0"></div>${images.length > 1 ? `<div class="gallery">${thumbs}</div>` : ''}`;
+  const thumbs = images.map((img,i)=>`<button class="gallery-thumb ${i===0?'active':''}" type="button" data-gallery-index="${i}" aria-label="Photo ${i+1}"><img src="${img}" alt="${safeText(p.title || 'Photo')} ${i+1}" loading="lazy"></button>`).join('');
+  return `<div class="detail-image detail-main-photo" id="detailMainPhoto" role="button" tabindex="0" aria-label="Open photo gallery"><img id="detailMainImage" src="${images[0]}" alt="${safeText(p.title || 'Property')}" data-gallery-index="0"></div>${images.length > 1 ? `<div class="gallery">${thumbs}</div>` : ''}`;
 }
 function initPropertyGallery(images){
   images = (images || []).map(imageSrc).filter(Boolean);
@@ -509,7 +672,7 @@ function initPropertyGallery(images){
     let startX = 0;
     const overlay = document.createElement('div');
     overlay.className = 'lightbox';
-    overlay.innerHTML = `<button class="lightbox-close" type="button" aria-label="${safeText(t('general.close'))}">×</button><button class="lightbox-nav lightbox-prev" type="button" aria-label="${safeText(t('general.previous'))}">‹</button><img class="lightbox-img" src="${images[current]}" alt=""><button class="lightbox-nav lightbox-next" type="button" aria-label="${safeText(t('general.next'))}">›</button><div class="lightbox-count"></div>`;
+    overlay.innerHTML = `<button class="lightbox-close" type="button" aria-label="Close">×</button><button class="lightbox-nav lightbox-prev" type="button" aria-label="Previous">‹</button><img class="lightbox-img" src="${images[current]}" alt=""><button class="lightbox-nav lightbox-next" type="button" aria-label="Next">›</button><div class="lightbox-count"></div>`;
     document.body.appendChild(overlay);
     document.body.style.overflow = 'hidden';
     const img = $('.lightbox-img', overlay), count = $('.lightbox-count', overlay);
@@ -541,7 +704,7 @@ function initPropertyDetail(){
     wrap.innerHTML = `<div class="empty">${safeText(t('detail.notFound'))}</div>`;
     return;
   }
-  document.title = `${p.title || t('property.generic')} — Rostom Immobilier`;
+  document.title = `${p.title || 'Property'} — Rostom Immobilier`;
   const price = p.price ? `${formatPrice(p.price)} ${safeText(p.currency || 'DZD')}` : '';
   const details = [
     [t('detail.type'), catLabel(p.category)], [t('detail.status'), statusTypeLabel(p)], [t('detail.virtualTour'), hasVirtualTour(p) ? t('detail.tourStart') : ''], [t('detail.wilaya'), wilayaDisplay(p.wilaya)], [t('detail.commune'), p.commune], [t('detail.address'), p.address], [t('detail.price'), price], [t('detail.surface'), p.surface && `${p.surface} ${t('card.surface')}`], [t('detail.land'), p.landSurface && `${p.landSurface} ${t('card.surface')}`], [t('detail.rooms'), p.rooms], [t('detail.bedrooms'), p.bedrooms], [t('detail.bathrooms'), p.bathrooms], [t('detail.floor'), p.floor], [t('detail.year'), p.yearBuilt], [t('detail.phone'), p.phone]
@@ -554,7 +717,7 @@ function initPropertyDetail(){
     </section>
     <aside class="detail-side glass">
       <p class="eyebrow">${safeText(statusTypeLabel(p))}</p>
-      <h1 class="title">${safeText(p.title || t('property.generic'))}</h1>
+      <h1 class="title">${safeText(p.title || 'Property')}</h1>
       ${price ? `<p class="price detail-price">${price}</p>` : ''}
       <p class="location detail-location">${[p.commune,wilayaDisplay(p.wilaya)].filter(Boolean).map(safeText).join(' · ')}</p>
       <div class="detail-list">${details}</div>
@@ -588,9 +751,9 @@ function ensureAdminHelpers(){
       <div class="tour-builder-head"><div><h3>${safeText(t('admin.hotspotsTitle'))}</h3><p class="note">${safeText(t('admin.hotspotsHelp'))}</p></div><button class="btn-soft" id="addTourRoomBtn" type="button">${safeText(t('admin.addRoom'))}</button></div>
       <div class="tour-room-editor-grid" id="tourRoomEditorGrid"></div>
       <div class="hotspot-editor hidden" id="hotspotEditor">
-        <div class="hotspot-editor-head"><div><p class="eyebrow">360</p><h3 id="hotspotRoomTitle">${safeText(t('detail.tourRoom'))}</h3><p class="note">${safeText(t('admin.clickPanorama'))}</p></div><button class="btn-outline" id="closeHotspotEditor" type="button">${safeText(t('admin.closeEditor'))}</button></div>
+        <div class="hotspot-editor-head"><div><p class="eyebrow">360</p><h3 id="hotspotRoomTitle">Room</h3><p class="note">${safeText(t('admin.clickPanorama'))}</p></div><button class="btn-outline" id="closeHotspotEditor" type="button">${safeText(t('admin.closeEditor'))}</button></div>
         <div class="hotspot-layout"><div class="admin-pano-wrap"><div id="adminTourViewer" class="admin-tour-viewer"></div></div><div class="hotspot-side">
-          <div class="field"><label>${safeText(t('admin.hotspotLabel'))}</label><input id="hotspotLabel" type="text" placeholder="${safeText(t('admin.hotspotPlaceholder'))}"></div>
+          <div class="field"><label>${safeText(t('admin.hotspotLabel'))}</label><input id="hotspotLabel" type="text" placeholder="Kitchen door"></div>
           <div class="field"><label>${safeText(t('admin.targetRoom'))}</label><select id="hotspotTargetRoom"></select></div>
           <div class="hotspot-coords"><span>${safeText(t('admin.selectedPoint'))}</span><strong id="hotspotCoords">—</strong></div>
           <button class="btn" id="addHotspotBtn" type="button">${safeText(t('admin.addHotspot'))}</button>
@@ -805,7 +968,7 @@ function initAdmin(){
     if(code !== ADMIN_CODE){ showToast(t('admin.badCode')); return; }
     if(window.RostomDB?.enabled && email && password){
       try{ await window.RostomDB.signIn(email, password); await loadDatabaseProperties(); DB_STATUS = 'connected'; }
-      catch(err){ console.error(err); showToast(err.message || t('admin.supabaseLoginFailed')); return; }
+      catch(err){ console.error(err); showToast(err.message || 'Supabase admin login failed. Check email/password.'); return; }
     } else if(window.RostomDB?.enabled && (!email || !password)) {
       DB_STATUS = 'local';
       REMOTE_PROPERTIES = null;
@@ -820,7 +983,7 @@ function initAdmin(){
     const submitBtn = form.querySelector('button[type="submit"]');
     const originalText = submitBtn ? submitBtn.textContent : '';
     if(window.RostomDB?.enabled && !window.RostomDB?.isSignedIn?.()){
-      showToast(t('admin.loginFirst'));
+      showToast('Login with admin email/password first.');
       return;
     }
     if(submitBtn){ submitBtn.disabled = true; submitBtn.textContent = t('admin.uploading'); }
@@ -841,13 +1004,13 @@ function initAdmin(){
       }
       await saveLocalProperty(prop); resetAdminForm(); showToast(wasEditing ? t('admin.updated') : t('admin.saved')); renderAdminList(); fillAdminStats(); initHeroSlider();
     }catch(err){
-      console.error(err); showToast(err.message || t('admin.uploadError'));
+      console.error(err); showToast(err.message || 'Upload/database error. Check SQL policies.');
     }finally{
       if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = originalText || t('admin.submit'); }
     }
   });
   $('#exportBtn')?.addEventListener('click',()=>{ const blob = new Blob([JSON.stringify(savedProperties(),null,2)],{type:'application/json'}); const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='rostom-properties-export.json'; a.click(); URL.revokeObjectURL(a.href); });
-  $('#importFile')?.addEventListener('change', async e=>{ const file = e.target.files[0]; if(!file) return; try{ const data = JSON.parse(await file.text()); if(Array.isArray(data)){ setSavedProperties(data); renderAdminList(); fillAdminStats(); initHeroSlider(); showToast(t('admin.importDone')); } } catch{ showToast(t('admin.invalidImport')); } });
+  $('#importFile')?.addEventListener('change', async e=>{ const file = e.target.files[0]; if(!file) return; try{ const data = JSON.parse(await file.text()); if(Array.isArray(data)){ setSavedProperties(data); renderAdminList(); fillAdminStats(); initHeroSlider(); showToast('Import done.'); } } catch{ showToast('Invalid import file.'); } });
 }
 async function deletePropertyById(id){
   if(window.RostomDB?.enabled && usingDatabase()){
@@ -865,11 +1028,11 @@ function renderAdminList(){
   const items = allProperties();
   list.innerHTML = items.length ? items.map(p=>`<div class="mini-prop">
     ${firstImage(p) ? `<img src="${firstImage(p)}" alt="">` : `<img alt="">`}
-    <div><strong>${safeText(p.title || t('property.generic'))}</strong><small>${statusLabel(p.status)} · ${catLabel(p.category)} · ${safeText(wilayaDisplay(p.wilaya) || t('admin.noWilaya'))}</small>${p.heroFeatured ? `<small class="admin-tour-mini hero-mini">${safeText(t('admin.topSlider'))} ${safeText(p.heroOrder || '')}</small>` : ''}${hasVirtualTour(p) ? `<small class="admin-tour-mini">${safeText(t('card.tour'))}</small>` : ''}</div>
+    <div><strong>${safeText(p.title || 'Property')}</strong><small>${statusLabel(p.status)} · ${catLabel(p.category)} · ${safeText(wilayaDisplay(p.wilaya) || 'No wilaya')}</small>${p.heroFeatured ? `<small class="admin-tour-mini hero-mini">Top slider ${safeText(p.heroOrder || '')}</small>` : ''}${hasVirtualTour(p) ? `<small class="admin-tour-mini">${safeText(t('card.tour'))}</small>` : ''}</div>
     <div class="mini-actions"><button class="btn-soft" data-edit="${safeText(p.id)}">${safeText(t('admin.edit'))}</button><button class="btn-soft btn-danger" data-delete="${safeText(p.id)}">${safeText(t('admin.delete'))}</button></div>
   </div>`).join('') : `<div class="empty">${safeText(t('admin.none'))}</div>`;
   $$('[data-edit]').forEach(btn=>btn.addEventListener('click',async ()=>{ btn.disabled = true; try{ await startEditProperty(btn.dataset.edit); } finally { btn.disabled = false; } }));
-  $$('[data-delete]').forEach(btn=>btn.addEventListener('click',async ()=>{ const id = btn.dataset.delete; try{ await deletePropertyById(id); if(ADMIN_EDITING_ID === id) resetAdminForm(); renderAdminList(); fillAdminStats(); initHeroSlider(); renderCards($('#listingsGrid'), allProperties()); showToast(t('admin.deleted')); } catch(err){ console.error(err); showToast(t('admin.databaseDeleteBlocked')); } }));
+  $$('[data-delete]').forEach(btn=>btn.addEventListener('click',async ()=>{ const id = btn.dataset.delete; try{ await deletePropertyById(id); if(ADMIN_EDITING_ID === id) resetAdminForm(); renderAdminList(); fillAdminStats(); initHeroSlider(); renderCards($('#listingsGrid'), allProperties()); showToast(t('admin.deleted')); } catch(err){ console.error(err); showToast('Database delete blocked. Check RLS/admin policy.'); } }));
 }
 function fillAdminStats(){ const items = allProperties(); const total = $('#adminTotal'); if(total) total.textContent = items.length; const sale = $('#adminSale'); if(sale) sale.textContent = items.filter(p=>p.status==='sale').length; const rent = $('#adminRent'); if(rent) rent.textContent = items.filter(p=>p.status==='rent').length; const db = $('#adminDbStatus'); if(db){ db.textContent = DB_STATUS === 'connected' ? 'Supabase connected' : DB_STATUS === 'offline' ? 'Supabase not ready / table missing' : 'Local browser mode'; } }
 
@@ -924,7 +1087,7 @@ function buildOverlayPropertyCard(p, extraClass = ''){
     <span class="overlay-shade"></span>
     ${hasVirtualTour(p) ? `<span class="overlay-tour-pill">${safeText(t('card.tour'))}</span>` : ''}
     <span class="overlay-card-content">
-      <strong>${safeText(p.title || t('property.generic'))}</strong>
+      <strong>${safeText(p.title || 'Property')}</strong>
       <small>${cardIcon('pin')}<span>${propertyLocation(p)}</span></small>
       ${price ? `<b>${price}</b>` : ''}
       ${meta ? `<em>${meta}</em>` : ''}
@@ -941,7 +1104,7 @@ function initHomePropertyShowcases(){
       latest[0] ? buildOverlayPropertyCard(latest[0], 'latest-large') : '',
       latest[1] ? buildOverlayPropertyCard(latest[1], 'latest-wide') : '',
       latest[2] ? buildOverlayPropertyCard(latest[2], 'latest-small') : '',
-      `<a class="latest-view-all" href="${ROOT}pages/estates.html"><strong>${safeText(t('home.latest.view'))}</strong><span>${safeText(t('home.latest.viewSub'))}</span><i>→</i></a>`
+      `<a class="latest-view-all" href="${ROOT}pages/estates.html"><strong>${safeText(extraText('home.latest.view'))}</strong><span>${safeText(extraText('home.latest.viewSub'))}</span><i>→</i></a>`
     ].join('') : `<div class="empty light-empty">${safeText(t('empty'))}</div>`;
   }
   if(handpickedBox){
@@ -962,7 +1125,10 @@ function aiLang(){
   return ['en','fr','ar'].includes(lang) ? lang : 'en';
 }
 function hasArabic(text){ return /[\u0600-\u06FF]/.test(String(text || '')); }
-function aiText(key){ return t(key); }
+function aiText(key){
+  const lang = aiLang();
+  return EXTRA_TRANSLATIONS[lang]?.[key] || EXTRA_TRANSLATIONS.en[key] || key;
+}
 function aiNormalize(value){
   return clean(value).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي');
 }
@@ -1039,8 +1205,8 @@ function aiMiniResultCard(p){
   const img = firstImage(p);
   const price = p.price ? `${formatPrice(p.price)} ${safeText(p.currency || 'DZD')}` : '';
   return `<a class="ai-result-card" href="${propertyUrl(p.id)}">
-    ${img ? `<img src="${img}" alt="${safeText(p.title || t('property.generic'))}" loading="lazy">` : '<span class="ai-result-noimg"></span>'}
-    <span><strong>${safeText(p.title || t('property.generic'))}</strong><small>${propertyLocation(p)}</small>${price ? `<b>${price}</b>` : ''}</span>
+    ${img ? `<img src="${img}" alt="${safeText(p.title || 'Property')}" loading="lazy">` : '<span class="ai-result-noimg"></span>'}
+    <span><strong>${safeText(p.title || 'Property')}</strong><small>${propertyLocation(p)}</small>${price ? `<b>${price}</b>` : ''}</span>
   </a>`;
 }
 const AI_PROVIDER_NAME = 'Puter.js';
@@ -1071,7 +1237,7 @@ function aiLoadProvider(){
 function aiFormatListingForPrompt(p, index){
   const price = p.price ? `${formatPrice(p.price)} ${p.currency || 'DZD'}` : 'price not listed';
   const bits = [
-    `${index + 1}. ${p.title || t('property.generic')}`,
+    `${index + 1}. ${p.title || 'Property'}`,
     `type: ${catLabel(p.category) || p.category || 'property'}`,
     `status: ${statusTypeLabel(p) || p.status || 'available'}`,
     `location: ${propertyLocation(p) || 'Algeria'}`,
@@ -1130,12 +1296,12 @@ function initPropertyAI(){
   const wrap = document.createElement('div');
   wrap.className = 'ai-assistant';
   wrap.id = 'aiPropertyAssistant';
-  wrap.innerHTML = `<button class="ai-float" id="aiFloatBtn" type="button" aria-label="${safeText(aiText('ai.nudge'))}"><span>${safeText(aiText('ai.button') || 'AI')}</span></button>
+  wrap.innerHTML = `<button class="ai-float" id="aiFloatBtn" type="button" aria-label="${safeText(aiText('ai.nudge'))}"><span>AI</span></button>
     <div class="ai-nudge" id="aiNudge">${safeText(aiText('ai.nudge'))}</div>
     <section class="ai-panel" id="aiPanel" aria-label="${safeText(aiText('ai.title'))}">
-      <div class="ai-panel-head"><div><strong>${safeText(aiText('ai.title'))}</strong><small>${safeText(aiText('ai.subtitle'))}</small></div><button type="button" id="aiCloseBtn" aria-label="${safeText(aiText('ai.close'))}">×</button></div>
+      <div class="ai-panel-head"><div><strong>${safeText(aiText('ai.title'))}</strong><small>${safeText(aiText('ai.subtitle'))}</small></div><button type="button" id="aiCloseBtn" aria-label="Close">×</button></div>
       <div class="ai-messages" id="aiMessages"><div class="ai-msg ai-bot">${safeText(aiText('ai.welcome'))}<br><small>${safeText(aiText('ai.onlySite'))}</small></div></div>
-      <div class="ai-quick"><button type="button" data-ai-sample="${safeText(aiText('ai.sample.apartmentQuery'))}">${safeText(aiText('ai.sample.apartment'))}</button><button type="button" data-ai-sample="${safeText(aiText('ai.sample.villaQuery'))}">${safeText(aiText('ai.sample.villa'))}</button><button type="button" data-ai-sample="${safeText(aiText('ai.sample.rentQuery'))}">${safeText(aiText('ai.sample.rent'))}</button></div>
+      <div class="ai-quick"><button type="button" data-ai-sample="اريد شقة اربع غرف">شقة 4 غرف</button><button type="button" data-ai-sample="villa avec 360">Villa 360</button><button type="button" data-ai-sample="rent house in Batna">Rent house</button></div>
       <form class="ai-form" id="aiForm"><input id="aiInput" autocomplete="off" placeholder="${safeText(aiText('ai.placeholder'))}"><button type="submit">${safeText(aiText('ai.send'))}</button></form>
     </section>`;
   document.body.appendChild(wrap);
@@ -1156,7 +1322,7 @@ function initPropertyAI(){
   async function answer(query){
     addMessage(safeText(query), 'user');
     const { items } = aiFindMatches(query);
-    const thinking = addMessage(`<span class="ai-thinking">${safeText(aiText('ai.thinking'))}</span>`, 'bot');
+    const thinking = addMessage('<span class="ai-thinking">Rostom AI is writing…</span>', 'bot');
     try{
       const text = await aiAskProvider(query, items);
       thinking.innerHTML = `${safeText(text).replace(/\n/g,'<br>')}${items.length ? `<div class="ai-results">${items.map(aiMiniResultCard).join('')}</div>` : `<br><small>${safeText(aiText('ai.onlySite'))}</small>`}`;
@@ -1179,7 +1345,7 @@ function initPropertyAI(){
 async function init(){
   showPageLoader();
 
-  applyLanguage(); bindLanguageSelectors();
+  applyLanguage(); bindLanguageSelectors(); applyExtraTranslations(); bindExtraTranslationRefresh();
   LOCATION_DATA = fallbackLocationData();
   fillWilayaSelects(); applyUrlFilters(); bindLocationControls();
   initNav(); initReveal(); initSearchBox(); initContactForm();

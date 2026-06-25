@@ -5,7 +5,7 @@ This project now includes a floating AI assistant in the bottom-right corner of 
 ## What was added
 
 - A floating round **AI** button at the bottom-right.
-- A popup text bubble saying **“Can I help you?”**, translated through `i18n.js`.
+- A popup text bubble saying **“Can I help you?”**.
 - A chat panel where visitors can ask about buying, renting, budget, location, property type, and available listings.
 - Real AI replies through **Puter.js**.
 - No API key is stored in the website code.
@@ -19,12 +19,7 @@ For a totally free static website, the safest no-backend option is Puter.js beca
 
 ## Files changed
 
-- `i18n.js`
-  - Added all AI assistant, homepage extra section, category, gallery, and admin helper translation keys in English, French, and Arabic.
-  - Extended the existing translation architecture to support translated aria labels and titles.
-
 - `script.js`
-  - Removed the separate `EXTRA_TRANSLATIONS` block so the code now uses the existing `t()` / `data-i18n` architecture.
   - Added the Puter.js loader.
   - Added real AI prompt generation for Rostom Immobilier.
   - Kept listing-based property matching so the AI does not invent unavailable properties.
@@ -32,7 +27,6 @@ For a totally free static website, the safest no-backend option is Puter.js beca
 
 - `style.css`
   - Added the small “AI is writing” animation.
-  - Modernized the language dropdown with a polished pill selector that fits the navigation and mobile menu.
 
 ## How to test
 
