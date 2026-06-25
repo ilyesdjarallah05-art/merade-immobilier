@@ -124,6 +124,8 @@
             <div class="field full"><label data-i18n="detail.description">Description</label><textarea name="description" rows="5" placeholder="Property description..."></textarea></div>
             <div class="field full"><label data-i18n="detail.features">Features</label><textarea name="features" rows="3" placeholder="Garage, Garden, Heating... separate with comma or new line"></textarea></div>
             <label class="field full" style="display:flex;flex-direction:row;align-items:center"><input name="featured" type="checkbox" style="width:auto"> <span data-i18n="admin.featured">Show in featured properties</span></label>
+            <label class="field full admin-check-row"><input name="heroFeatured" type="checkbox" style="width:auto"> <span data-home-i18n="admin.heroFeatured">Show in homepage top slider</span></label>
+            <div class="field"><label data-home-i18n="admin.heroOrder">Top slider order (1–8)</label><input name="heroOrder" type="number" min="1" max="8" placeholder="1"></div>
             <button class="btn-outline full hidden" id="cancelEditBtn" type="button" data-i18n="admin.cancelEdit">Cancel edit</button>
             <button class="btn full" type="submit" data-i18n="admin.submit">Publish property</button>
           </form>

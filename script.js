@@ -13,9 +13,38 @@ let ADMIN_HOTSPOT_ROOM_INDEX = 0;
 let ADMIN_SELECTED_POINT = null;
 let ADMIN_VIEWER = null;
 let ADMIN_ROOM_URLS = [];
+let HERO_AUTOPLAY_TIMER = null;
 
 const $ = (selector, scope = document) => scope.querySelector(selector);
 const $$ = (selector, scope = document) => Array.from(scope.querySelectorAll(selector));
+
+const EXTRA_TRANSLATIONS = {
+  en: {
+    'search.keyword':'Keyword','search.offerType':'Offer Type','search.type':'Type','search.state':'State','search.price':'Price','search.placeholder':'Search by keyword','search.allTypes':'All types','search.anyPrice':'Any price','cat.land':'Land','cat.offices':'Offices','cat.commercial':'Commercial','section.mustSee.title':'Must-See Properties','section.mustSee.sub':'Explore the most sought-after properties, carefully selected for you.','admin.heroFeatured':'Show in homepage top slider','admin.heroOrder':'Top slider order (1–8)'
+  },
+  fr: {
+    'search.keyword':'Mot-clé','search.offerType':'Type d’offre','search.type':'Type','search.state':'Wilaya','search.price':'Prix','search.placeholder':'Rechercher par mot-clé','search.allTypes':'Tous les types','search.anyPrice':'Tous les prix','cat.land':'Terrain','cat.offices':'Bureaux','cat.commercial':'Commercial','section.mustSee.title':'Biens incontournables','section.mustSee.sub':'Découvrez les biens les plus demandés, sélectionnés avec soin pour vous.','admin.heroFeatured':'Afficher dans le slider principal de la page d’accueil','admin.heroOrder':'Ordre du slider principal (1–8)'
+  },
+  ar: {
+    'search.keyword':'كلمة البحث','search.offerType':'نوع العرض','search.type':'النوع','search.state':'الولاية','search.price':'السعر','search.placeholder':'ابحث بكلمة مفتاحية','search.allTypes':'كل الأنواع','search.anyPrice':'كل الأسعار','cat.land':'أرض','cat.offices':'مكاتب','cat.commercial':'تجاري','section.mustSee.title':'عقارات لا تفوّت','section.mustSee.sub':'اكتشف أكثر العقارات طلبًا، مختارة بعناية من أجلك.','admin.heroFeatured':'إظهار العقار في السلايدر الرئيسي للصفحة الرئيسية','admin.heroOrder':'ترتيب السلايدر الرئيسي (1–8)'
+  }
+};
+function extraText(key){
+  const lang = typeof currentLang === 'function' ? currentLang() : 'en';
+  return EXTRA_TRANSLATIONS[lang]?.[key] || EXTRA_TRANSLATIONS.en[key] || key;
+}
+function applyExtraTranslations(){
+  $$('[data-home-i18n]').forEach(el => { el.textContent = extraText(el.dataset.homeI18n); });
+  $$('[data-home-i18n-placeholder]').forEach(el => { el.setAttribute('placeholder', extraText(el.dataset.homeI18nPlaceholder)); });
+}
+function bindExtraTranslationRefresh(){
+  $$('.language-select').forEach(sel => {
+    if(sel.dataset.extraTranslationBound) return;
+    sel.dataset.extraTranslationBound = 'yes';
+    sel.addEventListener('change', () => setTimeout(applyExtraTranslations, 0));
+  });
+}
+
 
 function showPageLoader(){
   if($('#pageLoader')) return;
@@ -41,6 +70,20 @@ function setHiddenDefaultIds(items){ localStorage.setItem(HIDDEN_DEFAULTS_KEY, J
 function defaultProperties(){ const hidden = new Set(hiddenDefaultIds()); return ROSTOM_DEFAULT_PROPERTIES.filter(p => !hidden.has(p.id)); }
 function localProperties(){ return [...savedProperties(), ...defaultProperties()].sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0)); }
 function allProperties(){ return (Array.isArray(REMOTE_PROPERTIES) ? REMOTE_PROPERTIES : localProperties()).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0)); }
+function isAdminScreen(){ return Boolean($('#adminList') || $('#loginScreen') || $('#adminApp')); }
+async function refreshAdminProperties(){
+  if(!window.RostomDB?.enabled || !window.RostomDB?.isSignedIn?.()) return false;
+  try{
+    REMOTE_PROPERTIES = window.RostomDB.listAdminProperties
+      ? await window.RostomDB.listAdminProperties()
+      : await window.RostomDB.listProperties({ published:false, limit:1000 });
+    DB_STATUS = 'connected';
+    return true;
+  }catch(err){
+    console.warn('Supabase admin list failed:', err);
+    return false;
+  }
+}
 async function loadDatabaseProperties(){
   if(!window.RostomDB?.enabled){ DB_STATUS = 'local'; return; }
   try{
@@ -48,10 +91,12 @@ async function loadDatabaseProperties(){
     if(detailId && window.RostomDB.getProperty){
       const one = await window.RostomDB.getProperty(detailId);
       REMOTE_PROPERTIES = one ? [one] : [];
+    } else if(isAdminScreen() && window.RostomDB.isSignedIn?.()) {
+      await refreshAdminProperties();
     } else {
-      REMOTE_PROPERTIES = await window.RostomDB.listProperties();
+      REMOTE_PROPERTIES = await window.RostomDB.listProperties({ limit:1000 });
+      DB_STATUS = 'connected';
     }
-    DB_STATUS = 'connected';
   }catch(err){
     console.warn('Supabase read failed:', err);
     REMOTE_PROPERTIES = null;
@@ -62,13 +107,47 @@ function usingDatabase(){ return Array.isArray(REMOTE_PROPERTIES) && window.Rost
 function clean(v){ return String(v || '').trim(); }
 function safeText(v){ return clean(v).replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch])); }
 function safeUrl(v){ const url = clean(v); return /^https?:\/\//i.test(url) ? url.replace(/"/g,'%22') : ''; }
-function imageSrc(v){ const url = clean(v); return /^(https?:\/\/|data:image\/|blob:)/i.test(url) ? url.replace(/"/g,'%22') : ''; }
-function firstImage(p){ return imageSrc((p.images && p.images[0]) || ''); }
+function imageSrc(v){
+  let url = clean(v);
+  if(!url) return '';
+  if(/^(javascript:|vbscript:|data:(?!image\/))/i.test(url)) return '';
+  if(window.RostomDB?.enabled && /^(photos|tours)\//i.test(url)){
+    url = window.RostomDB.publicStorageUrl(url);
+  }
+  return url.replace(/"/g,'%22');
+}
+function extractImageList(value){
+  if(!value) return [];
+  if(Array.isArray(value)) return value.flatMap(extractImageList);
+  if(typeof value === 'object') return extractImageList(value.url || value.src || value.publicUrl || value.path || value.image);
+  const raw = clean(value);
+  if(!raw) return [];
+  if((raw.startsWith('[') || raw.startsWith('{'))){
+    try { return extractImageList(JSON.parse(raw)); } catch {}
+  }
+  return raw.split(/\s*,\s*/).filter(Boolean);
+}
+function firstImage(p){
+  const candidates = [p?.images, p?.image, p?.mainImage, p?.coverImage, p?.photo, p?.photos, p?.gallery].flatMap(extractImageList);
+  return imageSrc(candidates.find(Boolean) || '');
+}
+function cssUrl(v){ return imageSrc(v).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n|\r/g,''); }
 function propertyUrl(id){ return `${ROOT}pages/property.html?id=${encodeURIComponent(id)}`; }
 function langLocale(){ return currentLang()==='ar' ? 'ar-DZ' : currentLang()==='fr' ? 'fr-DZ' : 'en-DZ'; }
 function formatPrice(p){ const n = Number(String(p||'').replace(/\s/g,'')); return Number.isNaN(n) ? safeText(p) : new Intl.NumberFormat(langLocale()).format(n); }
 function statusLabel(status){ return status === 'rent' ? t('card.forRent') : status === 'new' ? t('card.new') : t('card.forSale'); }
 function catLabel(cat){ const extra = {en:{land:'Land',offices:'Offices',commercial:'Commercial'},fr:{land:'Terrain',offices:'Bureaux',commercial:'Commercial'},ar:{land:'أراضي',offices:'مكاتب',commercial:'تجاري'}}; return {estates:t('cat.estates'),houses:t('cat.houses'),apartments:t('cat.apartments'),villas:t('cat.villas'),...(extra[currentLang()]||extra.en)}[cat] || t('cat.estates'); }
+function statusTypeLabel(p){ return `${statusLabel(p?.status)} · ${catLabel(p?.category)}`; }
+function propertyLocation(p){ return [p?.commune, wilayaDisplay(p?.wilaya)].filter(Boolean).map(safeText).join(', ') || safeText(p?.address || 'Algeria'); }
+function cardIcon(name){
+  const icons = {
+    pin:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Zm0-8.5A3.5 3.5 0 1 1 12 6a3.5 3.5 0 0 1 0 7.5Z"/></svg>',
+    bed:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11V5h2v5h6V7h6a4 4 0 0 1 4 4v7h-2v-3H5v3H3v-7Zm2 2h14v-2a2 2 0 0 0-2-2h-4v3H5v1Z"/></svg>',
+    bath:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4a3 3 0 0 1 6 0v5h8v2h-1l-1 5a5 5 0 0 1-4.9 4H9.9A5 5 0 0 1 5 16l-1-5H3V9h8V4a1 1 0 1 0-2 0v1H7V4Zm-.9 7 .8 4.6A3 3 0 0 0 9.9 18h4.2a3 3 0 0 0 3-2.4l.8-4.6H6.1Z"/></svg>',
+    area:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v2H6v5H4V4Zm14 2h-5V4h7v7h-2V6ZM6 13v5h5v2H4v-7h2Zm14 0v7h-7v-2h5v-5h2Z"/></svg>'
+  };
+  return icons[name] || '';
+}
 function wilayaDisplay(value){
   const code = clean(value).split(' - ')[0];
   const w = LOCATION_DATA.wilayas.find(x => x.code === code);
@@ -208,27 +287,26 @@ function loadPannellumAssets(){
 function buildCard(p){
   const img = firstImage(p);
   const price = p.price ? `${formatPrice(p.price)} ${safeText(p.currency || 'DZD')}` : '';
+  const roomsValue = p.bedrooms || p.rooms;
+  const areaValue = p.surface || p.landSurface;
   const meta = [
-    p.surface && `${safeText(p.surface)} ${t('card.surface')}`,
-    p.landSurface && `${t('card.land')} ${safeText(p.landSurface)} ${t('card.surface')}`,
-    p.rooms && `${safeText(p.rooms)} ${t('card.rooms')}`,
-    p.bedrooms && `${safeText(p.bedrooms)} ${t('card.bedrooms')}`,
-    p.bathrooms && `${safeText(p.bathrooms)} ${t('card.baths')}`,
-    p.floor && `${t('card.floor')} ${safeText(p.floor)}`
-  ].filter(Boolean).slice(0,4).map(m=>`<span>${m}</span>`).join('');
+    roomsValue && { icon:'bed', text: safeText(roomsValue) },
+    p.bathrooms && { icon:'bath', text: safeText(p.bathrooms) },
+    areaValue && { icon:'area', text: `${safeText(areaValue)} ${safeText(t('card.surface'))}` }
+  ].filter(Boolean).map(m=>`<span>${cardIcon(m.icon)}${m.text}</span>`).join('');
   return `<article class="property-card reveal" data-category="${safeText(p.category)}" data-status="${safeText(p.status)}" data-wilaya="${safeText(p.wilaya)}" data-commune="${safeText(p.commune)}">
     <a href="${propertyUrl(p.id)}" class="prop-media" aria-label="${safeText(t('card.details'))}">
       ${img ? `<img src="${img}" alt="${safeText(p.title || 'Property')}" loading="lazy">` : '<div class="no-img"></div>'}
-      <span class="badge ${p.status==='rent'?'rent':p.status==='new'?'new':''}">${statusLabel(p.status)}</span>
+      <span class="badge ${p.status==='rent'?'rent':p.status==='new'?'new':''}">${safeText(statusTypeLabel(p))}</span>
       ${hasVirtualTour(p) ? `<span class="tour-pill">${safeText(t('card.tour'))}</span>` : ''}
       <span class="explore-dot">${safeText(t('card.details'))} →</span>
     </a>
     <div class="prop-body">
-      <div class="prop-topline"><span>${safeText(catLabel(p.category))}</span><span>${safeText(wilayaDisplay(p.wilaya))}</span></div>
+      <div class="prop-topline"><span>${safeText(statusTypeLabel(p))}</span><span>${safeText(wilayaDisplay(p.wilaya))}</span></div>
       <h3 class="prop-title">${safeText(p.title || 'Property')}</h3>
-      <p class="location">${[p.commune, wilayaDisplay(p.wilaya)].filter(Boolean).map(safeText).join(' · ') || safeText(p.address || 'Algeria')}</p>
+      <p class="location prop-location-line">${cardIcon('pin')}<span>${propertyLocation(p)}</span></p>
       ${price ? `<p class="price">${price}</p>` : ''}
-      ${meta ? `<div class="meta">${meta}</div>` : ''}
+      ${meta ? `<div class="meta icon-meta">${meta}</div>` : ''}
     </div>
   </article>`;
 }
@@ -238,6 +316,81 @@ function renderCards(container, properties){
   initReveal(); initCardMotion();
 }
 
+
+function heroSliderProperties(){
+  const items = allProperties();
+  const byOrder = list => [...list].sort((a,b)=>{
+    const ao = Number(a.heroOrder || 999), bo = Number(b.heroOrder || 999);
+    if(ao !== bo) return ao - bo;
+    return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+  });
+  const newest = list => [...list].sort((a,b)=>new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+  // IMPORTANT: once the admin selects homepage-slider properties, show ONLY those.
+  // Do not complete the slider to 8 with random apartments/featured properties.
+  const selected = byOrder(items.filter(p => p && (p.heroFeatured || p.showInHero || p.homeHero))).slice(0,8);
+  if(selected.length) return selected;
+
+  // Only when nothing is selected in admin, keep a safe homepage fallback.
+  // Prefer properties with an image so the hero never becomes an empty white slide.
+  return newest(items.filter(p => firstImage(p))).slice(0,8);
+}
+function heroBackgroundImage(p){
+  const img = firstImage(p);
+  return cssUrl(img || 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1800&q=80');
+}
+function buildHeroSlide(p, index){
+  const img = heroBackgroundImage(p);
+  const price = p.price ? `${formatPrice(p.price)} ${safeText(p.currency || 'DZD')}` : '';
+  const roomsValue = p.bedrooms || p.rooms;
+  const areaValue = p.surface || p.landSurface;
+  const details = [
+    roomsValue && `${cardIcon('bed')}<span>${safeText(roomsValue)}</span>`,
+    p.bathrooms && `${cardIcon('bath')}<span>${safeText(p.bathrooms)}</span>`,
+    areaValue && `${cardIcon('area')}<span>${safeText(areaValue)} ${safeText(t('card.surface'))}</span>`
+  ].filter(Boolean).map(x=>`<span>${x}</span>`).join('');
+  return `<article class="home-slide ${index===0?'active':''}" style="background-image:url('${img}')">
+    <div class="container home-slide-content">
+      <a class="hero-property-card" href="${propertyUrl(p.id)}">
+        <p class="hero-status">${safeText(statusTypeLabel(p))}</p>
+        <h1>${safeText(p.title || 'Property')}${price ? ` | ${price}` : ''}</h1>
+        ${details ? `<div class="hero-specs">${details}</div>` : ''}
+        <p class="hero-place">${cardIcon('pin')}<span>${propertyLocation(p)}</span></p>
+        ${price ? `<p class="hero-price">${price}</p>` : ''}
+      </a>
+    </div>
+  </article>`;
+}
+function initHeroSlider(){
+  const slider = $('#homeSlider');
+  if(!slider) return;
+  const dotsWrap = $('#heroDots');
+  const items = heroSliderProperties();
+  if(HERO_AUTOPLAY_TIMER) clearInterval(HERO_AUTOPLAY_TIMER);
+  if(!items.length){ slider.innerHTML = ''; if(dotsWrap) dotsWrap.innerHTML = ''; return; }
+  slider.innerHTML = items.map(buildHeroSlide).join('');
+  if(dotsWrap) dotsWrap.innerHTML = items.map((_,i)=>`<button class="hero-dot ${i===0?'active':''}" type="button" aria-label="Go to property ${i+1}" data-hero-dot="${i}"></button>`).join('');
+  const slides = $$('.home-slide', slider);
+  const dots = $$('[data-hero-dot]');
+  let index = 0;
+  function go(next){
+    index = (next + slides.length) % slides.length;
+    slider.style.transform = `translateX(${-index * 100}%)`;
+    slides.forEach((slide,i)=>slide.classList.toggle('active', i === index));
+    dots.forEach((dot,i)=>dot.classList.toggle('active', i === index));
+  }
+  $('#heroPrev') && ($('#heroPrev').onclick = () => go(index - 1));
+  $('#heroNext') && ($('#heroNext').onclick = () => go(index + 1));
+  dots.forEach(dot=>dot.onclick = () => go(Number(dot.dataset.heroDot)));
+  if(slides.length > 1){
+    HERO_AUTOPLAY_TIMER = setInterval(()=>go(index + 1), 5200);
+    const hero = $('#homeHero');
+    if(hero){
+      hero.onmouseenter = () => HERO_AUTOPLAY_TIMER && clearInterval(HERO_AUTOPLAY_TIMER);
+      hero.onmouseleave = () => { HERO_AUTOPLAY_TIMER && clearInterval(HERO_AUTOPLAY_TIMER); HERO_AUTOPLAY_TIMER = setInterval(()=>go(index + 1), 5200); };
+    }
+  }
+}
 function initListings(){
   const grid = $('#listingsGrid'); if(!grid) return;
   const fixedCategory = grid.dataset.category || '';
@@ -246,12 +399,15 @@ function initListings(){
   const apply = () => {
     const q = clean($('#searchText')?.value).toLowerCase();
     const status = $('#filterStatus')?.value || '';
-    const cat = fixedCategory || ($('#filterCategory')?.value || '');
+    const cat = fixedCategory || ($('#filterCategory')?.value || new URL(location.href).searchParams.get('category') || '');
     const wilaya = $('#filterWilaya')?.value || '';
     const commune = $('#filterCommune')?.value || '';
+    const maxPrice = Number(new URL(location.href).searchParams.get('maxPrice') || 0);
     let items = allProperties().filter(p => {
-      const hay = [p.title,p.description,p.wilaya,p.commune,p.address,catLabel(p.category)].join(' ').toLowerCase();
-      return (!q || hay.includes(q)) && (!status || p.status === status) && (!cat || p.category === cat) && (!wilaya || p.wilaya === wilaya) && (!commune || p.commune === commune) && (!featuredOnly || p.featured);
+      const hay = [p.title,p.description,p.wilaya,p.commune,p.address,catLabel(p.category),statusTypeLabel(p)].join(' ').toLowerCase();
+      const priceValue = Number(String(p.price || '').replace(/\s/g,''));
+      const priceOk = !maxPrice || (!Number.isNaN(priceValue) && priceValue <= maxPrice);
+      return (!q || hay.includes(q)) && (!status || p.status === status) && (!cat || p.category === cat) && (!wilaya || p.wilaya === wilaya) && (!commune || p.commune === commune) && priceOk && (!featuredOnly || p.featured);
     });
     if(limit) items = items.slice(0, limit);
     renderCards(grid, items);
@@ -267,8 +423,8 @@ function initSearchBox(){
   const btn = $('#homeSearchBtn'); if(!btn) return;
   btn.addEventListener('click',()=>{
     const params = new URLSearchParams();
-    const q = clean($('#homeSearch')?.value); const status = $('#homeStatus')?.value; const wilaya = $('#homeWilaya')?.value; const commune = $('#homeCommune')?.value;
-    if(q) params.set('q', q); if(status) params.set('status', status); if(wilaya) params.set('wilaya', wilaya); if(commune) params.set('commune', commune);
+    const q = clean($('#homeSearch')?.value); const status = $('#homeStatus')?.value; const category = $('#homeCategory')?.value; const wilaya = $('#homeWilaya')?.value; const price = $('#homePrice')?.value;
+    if(q) params.set('q', q); if(status) params.set('status', status); if(category) params.set('category', category); if(wilaya) params.set('wilaya', wilaya); if(price) params.set('maxPrice', price);
     location.href = `${ROOT}pages/estates.html?${params.toString()}`;
   });
 }
@@ -277,6 +433,7 @@ function applyUrlFilters(){
   if($('#searchText') && url.searchParams.get('q')) $('#searchText').value = url.searchParams.get('q');
   if($('#filterStatus') && url.searchParams.get('status')) $('#filterStatus').value = url.searchParams.get('status');
   if($('#filterWilaya') && url.searchParams.get('wilaya')) $('#filterWilaya').value = url.searchParams.get('wilaya');
+  if($('#filterCategory') && url.searchParams.get('category')) $('#filterCategory').value = url.searchParams.get('category');
   if($('#filterCommune') && url.searchParams.get('commune')) $('#filterCommune').dataset.keepValue = url.searchParams.get('commune');
 }
 
@@ -327,7 +484,7 @@ function initVirtualTour(p){
 }
 
 function buildPropertyGallery(p){
-  const images = (p.images || []).map(imageSrc).filter(Boolean);
+  const images = extractImageList([p.images, p.image, p.mainImage, p.coverImage, p.photo, p.photos, p.gallery]).map(imageSrc).filter(Boolean);
   if(!images.length) return `<div class="detail-image detail-main-photo empty-photo"></div>`;
   const thumbs = images.map((img,i)=>`<button class="gallery-thumb ${i===0?'active':''}" type="button" data-gallery-index="${i}" aria-label="Photo ${i+1}"><img src="${img}" alt="${safeText(p.title || 'Photo')} ${i+1}" loading="lazy"></button>`).join('');
   return `<div class="detail-image detail-main-photo" id="detailMainPhoto" role="button" tabindex="0" aria-label="Open photo gallery"><img id="detailMainImage" src="${images[0]}" alt="${safeText(p.title || 'Property')}" data-gallery-index="0"></div>${images.length > 1 ? `<div class="gallery">${thumbs}</div>` : ''}`;
@@ -384,7 +541,7 @@ function initPropertyDetail(){
   document.title = `${p.title || 'Property'} — Rostom Immobilier`;
   const price = p.price ? `${formatPrice(p.price)} ${safeText(p.currency || 'DZD')}` : '';
   const details = [
-    [t('detail.type'), catLabel(p.category)], [t('detail.status'), statusLabel(p.status)], [t('detail.virtualTour'), hasVirtualTour(p) ? t('detail.tourStart') : ''], [t('detail.wilaya'), wilayaDisplay(p.wilaya)], [t('detail.commune'), p.commune], [t('detail.address'), p.address], [t('detail.price'), price], [t('detail.surface'), p.surface && `${p.surface} ${t('card.surface')}`], [t('detail.land'), p.landSurface && `${p.landSurface} ${t('card.surface')}`], [t('detail.rooms'), p.rooms], [t('detail.bedrooms'), p.bedrooms], [t('detail.bathrooms'), p.bathrooms], [t('detail.floor'), p.floor], [t('detail.year'), p.yearBuilt], [t('detail.phone'), p.phone]
+    [t('detail.type'), catLabel(p.category)], [t('detail.status'), statusTypeLabel(p)], [t('detail.virtualTour'), hasVirtualTour(p) ? t('detail.tourStart') : ''], [t('detail.wilaya'), wilayaDisplay(p.wilaya)], [t('detail.commune'), p.commune], [t('detail.address'), p.address], [t('detail.price'), price], [t('detail.surface'), p.surface && `${p.surface} ${t('card.surface')}`], [t('detail.land'), p.landSurface && `${p.landSurface} ${t('card.surface')}`], [t('detail.rooms'), p.rooms], [t('detail.bedrooms'), p.bedrooms], [t('detail.bathrooms'), p.bathrooms], [t('detail.floor'), p.floor], [t('detail.year'), p.yearBuilt], [t('detail.phone'), p.phone]
   ].filter(([,v])=>clean(v)).map(([k,v])=>`<div class="detail-item"><small>${safeText(k)}</small><strong>${safeText(v)}</strong></div>`).join('');
   const features = (p.features || []).filter(Boolean).map(f=>`<li>${safeText(f)}</li>`).join('');
   const virtualTour = buildVirtualTourSection(p);
@@ -396,7 +553,7 @@ function initPropertyDetail(){
       ${features ? `<div class="glass info-block"><h2 class="prop-title">${safeText(t('detail.features'))}</h2><ul class="check-list">${features}</ul></div>` : ''}
     </div>
     <aside class="detail-side glass">
-      <p class="eyebrow">${statusLabel(p.status)}</p>
+      <p class="eyebrow">${safeText(statusTypeLabel(p))}</p>
       <h1 class="title">${safeText(p.title || 'Property')}</h1>
       ${price ? `<p class="price detail-price">${price}</p>` : ''}
       <p class="location detail-location">${[p.commune,wilayaDisplay(p.wilaya)].filter(Boolean).map(safeText).join(' · ')}</p>
@@ -404,7 +561,7 @@ function initPropertyDetail(){
       <div class="hero-cta"><a class="btn" href="${ROOT}pages/contact.html">${safeText(t('detail.visit'))}</a>${p.phone ? `<a class="btn-outline" href="tel:${safeText(p.phone)}">${safeText(t('detail.call'))}</a>` : ''}</div>
     </aside>
   </div>`;
-  initPropertyGallery(p.images || []);
+  initPropertyGallery(extractImageList([p.images, p.image, p.mainImage, p.coverImage, p.photo, p.photos, p.gallery]));
   initVirtualTour(p);
 }
 
@@ -552,12 +709,14 @@ async function startEditProperty(id){
     try{ p = await window.RostomDB.getProperty(id) || p; }catch(err){ console.warn('Could not load full property for edit:', err); }
   }
   ADMIN_EDITING_ID = id;
-  ADMIN_EXISTING_IMAGES = (p.images || []).map(imageSrc).filter(Boolean);
+  ADMIN_EXISTING_IMAGES = Array.from(new Set(extractImageList([p.images, p.image, p.mainImage, p.coverImage, p.photo, p.photos, p.gallery]).map(imageSrc).filter(Boolean)));
   ADMIN_TOUR_ROOMS = normalizeTourRooms(p).map(r=>({ ...r, hotspots: normalizeHotspots(r.hotspots) }));
   ADMIN_HOTSPOT_ROOM_INDEX = 0;
   ['title','category','status','wilaya','commune','address','price','currency','surface','landSurface','rooms','bedrooms','bathrooms','floor','yearBuilt','phone','description'].forEach(name=>setFormValue(form, name, p[name] || ''));
   setFormValue(form, 'features', (p.features || []).join('\n'));
   setFormValue(form, 'featured', p.featured);
+  setFormValue(form, 'heroFeatured', p.heroFeatured);
+  setFormValue(form, 'heroOrder', p.heroOrder || '');
   setFormValue(form, 'virtualTourUrl', p.virtualTourUrl || '');
   updateTourRoomsTextarea();
   fillCommuneControl($('#adminCommuneList'), form.elements.wilaya.value);
@@ -607,8 +766,10 @@ async function buildPropertyFromForm(form){
     address: clean(fd.get('address')),
     description: clean(fd.get('description')),
     features: clean(fd.get('features')).split(/,|\n/).map(clean).filter(Boolean),
-    images: [...ADMIN_EXISTING_IMAGES, ...newImages],
+    images: Array.from(new Set([...ADMIN_EXISTING_IMAGES, ...newImages].map(imageSrc).filter(Boolean))),
     featured: fd.get('featured') === 'on',
+    heroFeatured: fd.get('heroFeatured') === 'on',
+    heroOrder: clean(fd.get('heroOrder')) ? Math.min(8, Math.max(1, Number(fd.get('heroOrder')))) : '',
     hasVirtualTour: Boolean(virtualTourUrl || finalTourRooms.length),
     virtualTourType: finalTourRooms.length ? 'pannellum' : 'embed',
     virtualTourUrl,
@@ -626,17 +787,23 @@ async function saveLocalProperty(prop){
 function initAdmin(){
   const loginScreen = $('#loginScreen'); const adminApp = $('#adminApp'); if(!loginScreen || !adminApp) return;
   ensureAdminHelpers(); bindTourBuilder(); renderImageManager(); renderTourBuilder();
-  const unlock = () => { loginScreen.classList.add('hidden'); adminApp.classList.remove('hidden'); renderAdminList(); fillAdminStats(); };
-  if(sessionStorage.getItem(ADMIN_FLAG) === 'yes') unlock();
+  const unlock = () => { loginScreen.classList.add('hidden'); adminApp.classList.remove('hidden'); renderAdminList(); fillAdminStats(); initHeroSlider(); };
+  if(sessionStorage.getItem(ADMIN_FLAG) === 'yes'){
+    if(!window.RostomDB?.enabled || window.RostomDB?.isSignedIn?.()) unlock();
+    else sessionStorage.removeItem(ADMIN_FLAG);
+  }
   $('#loginForm')?.addEventListener('submit', async e=>{
     e.preventDefault();
     const code = clean($('#adminCode')?.value);
     const email = clean($('#adminEmail')?.value);
     const password = clean($('#adminPassword')?.value);
     if(code !== ADMIN_CODE){ showToast(t('admin.badCode')); return; }
-    if(email && password && window.RostomDB?.enabled){
+    if(window.RostomDB?.enabled && email && password){
       try{ await window.RostomDB.signIn(email, password); await loadDatabaseProperties(); DB_STATUS = 'connected'; }
-      catch(err){ console.error(err); showToast('Supabase admin login failed. Check email/password.'); return; }
+      catch(err){ console.error(err); showToast(err.message || 'Supabase admin login failed. Check email/password.'); return; }
+    } else if(window.RostomDB?.enabled && (!email || !password)) {
+      DB_STATUS = 'local';
+      REMOTE_PROPERTIES = null;
     }
     sessionStorage.setItem(ADMIN_FLAG,'yes'); unlock();
   });
@@ -660,10 +827,14 @@ function initAdmin(){
         let remote;
         if(wasEditing) remote = await window.RostomDB.updateProperty(editingId, prop);
         else remote = await window.RostomDB.insertProperty(prop);
-        REMOTE_PROPERTIES = wasEditing ? (REMOTE_PROPERTIES || []).map(p=>p.id === editingId ? remote : p) : [remote, ...(REMOTE_PROPERTIES || [])];
-        DB_STATUS = 'connected'; resetAdminForm(); showToast(wasEditing ? t('admin.updatedDb') : t('admin.savedDb')); renderAdminList(); fillAdminStats(); return;
+        const refreshed = await refreshAdminProperties();
+        if(!refreshed){
+          REMOTE_PROPERTIES = wasEditing ? (REMOTE_PROPERTIES || []).map(p=>p.id === editingId ? remote : p) : [remote, ...(REMOTE_PROPERTIES || [])];
+          DB_STATUS = 'connected';
+        }
+        resetAdminForm(); showToast(wasEditing ? t('admin.updatedDb') : t('admin.savedDb')); renderAdminList(); fillAdminStats(); initHeroSlider(); return;
       }
-      await saveLocalProperty(prop); resetAdminForm(); showToast(wasEditing ? t('admin.updated') : t('admin.saved')); renderAdminList(); fillAdminStats();
+      await saveLocalProperty(prop); resetAdminForm(); showToast(wasEditing ? t('admin.updated') : t('admin.saved')); renderAdminList(); fillAdminStats(); initHeroSlider();
     }catch(err){
       console.error(err); showToast(err.message || 'Upload/database error. Check SQL policies.');
     }finally{
@@ -671,12 +842,13 @@ function initAdmin(){
     }
   });
   $('#exportBtn')?.addEventListener('click',()=>{ const blob = new Blob([JSON.stringify(savedProperties(),null,2)],{type:'application/json'}); const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='rostom-properties-export.json'; a.click(); URL.revokeObjectURL(a.href); });
-  $('#importFile')?.addEventListener('change', async e=>{ const file = e.target.files[0]; if(!file) return; try{ const data = JSON.parse(await file.text()); if(Array.isArray(data)){ setSavedProperties(data); renderAdminList(); fillAdminStats(); showToast('Import done.'); } } catch{ showToast('Invalid import file.'); } });
+  $('#importFile')?.addEventListener('change', async e=>{ const file = e.target.files[0]; if(!file) return; try{ const data = JSON.parse(await file.text()); if(Array.isArray(data)){ setSavedProperties(data); renderAdminList(); fillAdminStats(); initHeroSlider(); showToast('Import done.'); } } catch{ showToast('Invalid import file.'); } });
 }
 async function deletePropertyById(id){
   if(window.RostomDB?.enabled && usingDatabase()){
     await window.RostomDB.deleteProperty(id);
-    REMOTE_PROPERTIES = (REMOTE_PROPERTIES || []).filter(p => p.id !== id);
+    const refreshed = await refreshAdminProperties();
+    if(!refreshed) REMOTE_PROPERTIES = (REMOTE_PROPERTIES || []).filter(p => p.id !== id);
     return;
   }
   const saved = savedProperties();
@@ -688,33 +860,36 @@ function renderAdminList(){
   const items = allProperties();
   list.innerHTML = items.length ? items.map(p=>`<div class="mini-prop">
     ${firstImage(p) ? `<img src="${firstImage(p)}" alt="">` : `<img alt="">`}
-    <div><strong>${safeText(p.title || 'Property')}</strong><small>${statusLabel(p.status)} · ${catLabel(p.category)} · ${safeText(wilayaDisplay(p.wilaya) || 'No wilaya')}</small>${hasVirtualTour(p) ? `<small class="admin-tour-mini">${safeText(t('card.tour'))}</small>` : ''}</div>
+    <div><strong>${safeText(p.title || 'Property')}</strong><small>${statusLabel(p.status)} · ${catLabel(p.category)} · ${safeText(wilayaDisplay(p.wilaya) || 'No wilaya')}</small>${p.heroFeatured ? `<small class="admin-tour-mini hero-mini">Top slider ${safeText(p.heroOrder || '')}</small>` : ''}${hasVirtualTour(p) ? `<small class="admin-tour-mini">${safeText(t('card.tour'))}</small>` : ''}</div>
     <div class="mini-actions"><button class="btn-soft" data-edit="${safeText(p.id)}">${safeText(t('admin.edit'))}</button><button class="btn-soft btn-danger" data-delete="${safeText(p.id)}">${safeText(t('admin.delete'))}</button></div>
   </div>`).join('') : `<div class="empty">${safeText(t('admin.none'))}</div>`;
   $$('[data-edit]').forEach(btn=>btn.addEventListener('click',async ()=>{ btn.disabled = true; try{ await startEditProperty(btn.dataset.edit); } finally { btn.disabled = false; } }));
-  $$('[data-delete]').forEach(btn=>btn.addEventListener('click',async ()=>{ const id = btn.dataset.delete; try{ await deletePropertyById(id); if(ADMIN_EDITING_ID === id) resetAdminForm(); renderAdminList(); fillAdminStats(); renderCards($('#listingsGrid'), allProperties()); showToast(t('admin.deleted')); } catch(err){ console.error(err); showToast('Database delete blocked. Check RLS/admin policy.'); } }));
+  $$('[data-delete]').forEach(btn=>btn.addEventListener('click',async ()=>{ const id = btn.dataset.delete; try{ await deletePropertyById(id); if(ADMIN_EDITING_ID === id) resetAdminForm(); renderAdminList(); fillAdminStats(); initHeroSlider(); renderCards($('#listingsGrid'), allProperties()); showToast(t('admin.deleted')); } catch(err){ console.error(err); showToast('Database delete blocked. Check RLS/admin policy.'); } }));
 }
 function fillAdminStats(){ const items = allProperties(); const total = $('#adminTotal'); if(total) total.textContent = items.length; const sale = $('#adminSale'); if(sale) sale.textContent = items.filter(p=>p.status==='sale').length; const rent = $('#adminRent'); if(rent) rent.textContent = items.filter(p=>p.status==='rent').length; const db = $('#adminDbStatus'); if(db){ db.textContent = DB_STATUS === 'connected' ? 'Supabase connected' : DB_STATUS === 'offline' ? 'Supabase not ready / table missing' : 'Local browser mode'; } }
 
 async function init(){
   showPageLoader();
-  const loaderSafetyTimer = setTimeout(hidePageLoader, 650);
 
-  applyLanguage(); bindLanguageSelectors();
+  applyLanguage(); bindLanguageSelectors(); applyExtraTranslations(); bindExtraTranslationRefresh();
   LOCATION_DATA = fallbackLocationData();
   fillWilayaSelects(); applyUrlFilters(); bindLocationControls();
-  initNav(); initReveal(); initSearchBox(); initListings(); initPropertyDetail(); initContactForm(); initAdmin();
-
-  setTimeout(hidePageLoader, 280);
+  initNav(); initReveal(); initSearchBox(); initContactForm();
 
   try{
     const [, locationsResult] = await Promise.allSettled([loadDatabaseProperties(), loadLocationData()]);
     if(locationsResult.status === 'fulfilled') LOCATION_DATA = locationsResult.value;
     fillWilayaSelects(); applyUrlFilters(); bindLocationControls();
-    initListings(); initPropertyDetail();
+
+    // Render data-dependent UI only after Supabase/local data has settled.
+    // This prevents the homepage hero from first showing a partial/fallback set
+    // and then jumping to the full 8 slides a moment later.
+    initHeroSlider();
+    initListings();
+    initPropertyDetail();
+    initAdmin();
     if($('#adminList')){ renderAdminList(); fillAdminStats(); }
   } finally {
-    clearTimeout(loaderSafetyTimer);
     hidePageLoader();
   }
 }

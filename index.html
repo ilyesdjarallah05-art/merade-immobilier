@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="./favicon.ico">
 </head>
-<body>
+<body class="home-page">
 <nav class="nav" id="nav">
   <div class="container nav-inner">
     <a class="brand" href="index.html"><span class="brand-mark">R</span><span>Rostom Immobilier</span></a>
@@ -25,41 +25,40 @@
     <div class="nav-actions"><select class="language-select" aria-label="Language"><option value="en">English</option><option value="fr">Français</option><option value="ar">العربية</option></select><a class="btn" href="pages/contact.html" data-i18n="nav.cta">Book a visit</a></div>
   </div>
 </nav>
-<header class="hero">
-  <div class="container hero-top">
-    <p class="eyebrow" data-i18n="hero.kicker">Batna · All Algeria</p>
-    <div class="hero-words hero-words-wide reveal">
-      <h1 class="h1">
-        <a class="hero-word hero-word-buy" href="pages/estates.html?status=sale" data-i18n="hero.buy">Buy.</a>
-        <a class="hero-word hero-word-sell" href="pages/contact.html" data-i18n="hero.sell">Sell.</a>
-        <a class="hero-word hero-word-rent" href="pages/estates.html?status=rent" data-i18n="hero.rent">Rent.</a>
-      </h1>
-    </div>
-  </div>
-  <div class="container hero-grid">
-    <div class="reveal">
-      <h2 class="title" data-i18n="hero.title">Curated properties for modern living</h2>
-      <p class="lead" data-i18n="hero.lead">A clean real estate showcase for homes, villas, apartments, land and commercial spaces across Algeria.</p>
-      <div class="hero-search">
-        <div class="field"><label data-i18n="search.status">Status</label><select id="homeStatus"><option value="" data-i18n="search.all">All</option><option value="sale" data-i18n="filter.sale">Sale</option><option value="rent" data-i18n="filter.rent">Rent</option><option value="new" data-i18n="filter.new">New project</option></select></div>
-        <div class="field"><label data-i18n="search.wilaya">Wilaya</label><select id="homeWilaya" data-filter data-wilayas data-wilaya-source="#homeCommune"><option value="" data-i18n="search.allAlgeria">All Algeria</option></select></div>
-        <div class="field"><label data-i18n="search.commune">Baladiya / area</label><select id="homeCommune"><option value="" data-i18n="search.allAreas">All areas</option></select></div>
-        <div class="field"><label data-i18n="search.query">Search</label><input id="homeSearch" type="text" data-i18n-placeholder="search.placeholder" placeholder="Batna, villa, land..."></div>
-        <button class="btn" id="homeSearchBtn" type="button" data-i18n="search.go">Search</button>
+<header class="home-showcase" id="homeHero" aria-label="Top properties">
+  <div class="home-slider" id="homeSlider"></div>
+  <button class="hero-nav hero-prev" id="heroPrev" type="button" aria-label="Previous property">‹</button>
+  <button class="hero-nav hero-next" id="heroNext" type="button" aria-label="Next property">›</button>
+  <div class="container hero-dots-wrap"><div class="hero-dots" id="heroDots"></div></div>
+  <div class="container hero-search-wrap">
+    <div class="home-search-bar reveal">
+      <div class="hero-filter hero-filter-keyword">
+        <label data-home-i18n="search.keyword">Keyword</label>
+        <div class="filter-control"><input id="homeSearch" type="text" data-home-i18n-placeholder="search.placeholder" data-i18n-placeholder="search.placeholder" placeholder="Search by keyword"><span class="filter-icon">⌕</span></div>
       </div>
-      <div class="hero-cta"><a class="btn" href="pages/estates.html" data-i18n="hero.view">Explore properties</a><a class="btn-outline" href="pages/about.html" data-i18n="hero.about">About Rostom</a></div>
-    </div>
-    <div class="hero-panel reveal">
-      <div class="hero-img"><img src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1600&q=80" alt="Modern real estate interior"></div>
-      <div class="mini-info">Rostom<br>Immobilier</div>
-      <div class="floating-card"><strong data-i18n="hero.cardTitle">69 wilayas</strong><span data-i18n="hero.cardText">Wilaya and Baladiya dropdowns are ready for Algeria. Batna includes popular areas like Bouaakal and Douar Eddis too.</span></div>
+      <div class="hero-filter">
+        <label data-home-i18n="search.offerType">Offer Type</label>
+        <select id="homeStatus"><option value="" data-i18n="search.all">All</option><option value="sale" data-i18n="filter.sale">Sale</option><option value="rent" data-i18n="filter.rent">Rent</option><option value="new" data-i18n="filter.new">New project</option></select>
+      </div>
+      <div class="hero-filter">
+        <label data-home-i18n="search.type">Type</label>
+        <select id="homeCategory"><option value="" data-home-i18n="search.allTypes">All types</option><option value="villas" data-i18n="cat.villas">Villas</option><option value="apartments" data-i18n="cat.apartments">Apartments</option><option value="houses" data-i18n="cat.houses">Houses</option><option value="land" data-home-i18n="cat.land">Land</option><option value="offices" data-home-i18n="cat.offices">Offices</option><option value="commercial" data-home-i18n="cat.commercial">Commercial</option></select>
+      </div>
+      <div class="hero-filter">
+        <label data-home-i18n="search.state">State</label>
+        <select id="homeWilaya" data-wilayas><option value="" data-i18n="search.allAlgeria">All Algeria</option></select>
+      </div>
+      <div class="hero-filter">
+        <label data-home-i18n="search.price">Price</label>
+        <select id="homePrice"><option value="" data-home-i18n="search.anyPrice">Any price</option><option value="10000000">≤ 10M DZD</option><option value="50000000">≤ 50M DZD</option><option value="100000000">≤ 100M DZD</option><option value="200000000">≤ 200M DZD</option></select>
+      </div>
+      <button class="btn hero-search-btn" id="homeSearchBtn" type="button" data-i18n="search.go">Search</button>
     </div>
   </div>
 </header>
-<div class="marquee" aria-hidden="true"><div class="marquee-track"><span>Rostom Immobilier</span><span>Batna</span><span>Buy</span><span>Sell</span><span>Rent</span><span>Rostom Immobilier</span><span>Batna</span><span>Buy</span><span>Sell</span><span>Rent</span></div></div>
 <main>
+  <section class="section section-alt must-see-section"><div class="container"><div class="section-head centered"><div><p class="eyebrow" data-i18n="section.featured.kicker">Featured properties</p><h2 class="title" data-home-i18n="section.mustSee.title">Must-See Properties</h2><p class="sub" data-home-i18n="section.mustSee.sub">Explore the most sought-after properties, carefully selected for you.</p></div><a class="btn-outline" href="pages/estates.html" data-i18n="section.featured.all">View all</a></div><div class="grid" id="listingsGrid" data-featured="true" data-limit="8"></div></div></section>
   <section class="section"><div class="container stats reveal"><div class="stat"><strong>180+</strong><span data-i18n="stats.properties">Properties</span></div><div class="stat"><strong>2026</strong><span>Rostom</span></div><div class="stat"><strong>69</strong><span data-i18n="stats.wilayas">Wilayas</span></div><div class="stat"><strong>24/7</strong><span data-i18n="stats.contacts">Fast contact</span></div></div></section>
-  <section class="section section-alt"><div class="container"><div class="section-head"><div><p class="eyebrow" data-i18n="section.featured.kicker">Featured properties</p><h2 class="title" data-i18n="section.featured.title">Selected listings</h2><p class="sub" data-i18n="section.featured.sub">Fresh, clean cards with useful information only. Empty fields stay hidden automatically.</p></div><a class="btn-outline" href="pages/estates.html" data-i18n="section.featured.all">View all</a></div><div class="grid" id="listingsGrid" data-featured="true" data-limit="8"></div></div></section>
   <section class="section"><div class="container"><div class="section-head"><div><p class="eyebrow" data-i18n="section.categories.kicker">Categories</p><h2 class="title" data-i18n="section.categories.title">Find what you need faster</h2></div></div><div class="services">
     <a class="service reveal" href="pages/houses.html"><div><div class="icon">01</div><h3 data-i18n="cat.houses">Houses</h3><p data-i18n="cat.housesDesc">Family houses, duplexes and residential buildings.</p></div></a>
     <a class="service reveal" href="pages/apartments.html"><div><div class="icon">02</div><h3 data-i18n="cat.apartments">Apartments</h3><p data-i18n="cat.apartmentsDesc">F2, F3, high standing, sale and rent.</p></div></a>

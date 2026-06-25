@@ -19,6 +19,32 @@
   function storageUrl(path){ return `${baseUrl}/storage/v1/${path}`; }
   function encodePath(path){ return String(path).split('/').map(encodeURIComponent).join('/'); }
   function publicStorageUrl(path){ return storageUrl(`object/public/${encodeURIComponent(bucket)}/${encodePath(path)}`); }
+  function asMediaUrl(value){
+    const raw = clean(value);
+    if(!raw) return '';
+    if(/^(https?:\/\/|data:image\/|blob:)/i.test(raw)) return raw;
+    const path = raw.replace(/^\/+/, '').replace(/^property-media\//, '');
+    return publicStorageUrl(path);
+  }
+  function normalizeMediaList(value){
+    if(!value) return [];
+    if(Array.isArray(value)) return value.flatMap(normalizeMediaList).filter(Boolean);
+    if(typeof value === 'object') return normalizeMediaList(value.publicUrl || value.url || value.src || value.path || value.image || value.photo || value.href);
+    const raw = clean(value);
+    if(!raw) return [];
+    if(raw.startsWith('[') || raw.startsWith('{')){
+      try { return normalizeMediaList(JSON.parse(raw)); } catch {}
+    }
+    return raw.split(/\s*,\s*/).map(asMediaUrl).filter(Boolean);
+  }
+  function normalizeTextList(value){
+    if(!value) return [];
+    if(Array.isArray(value)) return value.map(clean).filter(Boolean);
+    const raw = clean(value);
+    if(!raw) return [];
+    if(raw.startsWith('[')){ try { return normalizeTextList(JSON.parse(raw)); } catch {} }
+    return raw.split(/\n|,/).map(clean).filter(Boolean);
+  }
 
   const SESSION_KEY = 'rostomSupabaseSessionV1';
   function getSession(){ try { return JSON.parse(sessionStorage.getItem(SESSION_KEY)) || null; } catch { return null; } }
@@ -38,7 +64,7 @@
   function normalizeRooms(value){
     if(Array.isArray(value)) return value.filter(Boolean).map((r,i)=>({
       room: clean(r.room) || `Room ${i+1}`,
-      image: clean(r.image),
+      image: asMediaUrl(r.image),
       hotspots: normalizeHotspots(r.hotspots)
     })).filter(r=>r.image);
     return [];
@@ -64,9 +90,11 @@
       yearBuilt: row.year_built || '',
       phone: row.phone || '',
       description: row.description || '',
-      features: Array.isArray(row.features) ? row.features : [],
-      images: Array.isArray(row.images) ? row.images : [],
+      features: normalizeTextList(row.features),
+      images: normalizeMediaList([row.images, row.image, row.main_image, row.cover_image, row.photo, row.photos, row.gallery]),
       featured: Boolean(row.featured),
+      heroFeatured: Boolean(row.hero_featured),
+      heroOrder: row.hero_order ?? '',
       isPublished: row.is_published !== false,
       hasVirtualTour: Boolean(row.has_virtual_tour || row.virtual_tour_url || rooms.length),
       virtualTourType: row.virtual_tour_type || (rooms.length ? 'pannellum' : 'embed'),
@@ -98,9 +126,11 @@
       year_built: prop.yearBuilt || null,
       phone: prop.phone || null,
       description: prop.description || null,
-      features: prop.features || [],
-      images: prop.images || [],
+      features: normalizeTextList(prop.features),
+      images: normalizeMediaList(prop.images),
       featured: Boolean(prop.featured),
+      hero_featured: Boolean(prop.heroFeatured),
+      hero_order: prop.heroOrder ? Number(prop.heroOrder) : null,
       is_published: true,
       has_virtual_tour: Boolean(tourUrl || tourRooms.length || prop.hasVirtualTour),
       virtual_tour_type: prop.virtualTourType || (tourRooms.length ? 'pannellum' : 'embed'),
@@ -142,13 +172,24 @@
   const SUMMARY_SELECT = [
     'id','title','category','status','wilaya','commune','address','price','currency',
     'surface','land_surface','rooms','bedrooms','bathrooms','floor','year_built','phone',
-    'description','features','images','featured','is_published','has_virtual_tour',
+    'description','features','images','featured','hero_featured','hero_order','is_published','has_virtual_tour',
     'virtual_tour_type','virtual_tour_url','created_at'
   ].join(',');
 
-  async function listProperties(){
-    const rows = await request(`properties?select=${SUMMARY_SELECT}&is_published=eq.true&order=created_at.desc&limit=60`);
+  async function listProperties(options={}){
+    const limit = Math.min(1000, Math.max(1, Number(options.limit || 1000)));
+    const publishedFilter = options.published === false ? '' : '&or=(is_published.eq.true,is_published.is.null)';
+    const rows = await request(`properties?select=${SUMMARY_SELECT}${publishedFilter}&order=created_at.desc&limit=${limit}`);
     return (rows || []).map(toCamel);
+  }
+  async function listAdminProperties(){
+    try{
+      const rows = await request(`properties?select=${SUMMARY_SELECT}&order=created_at.desc&limit=1000`);
+      return (rows || []).map(toCamel);
+    }catch(err){
+      console.warn('Admin full property list failed, falling back to public list:', err);
+      return listProperties({ limit: 1000 });
+    }
   }
   async function getProperty(id){
     if(!id) return null;
@@ -198,5 +239,5 @@
     return out;
   }
 
-  window.RostomDB = { enabled, baseUrl, bucket, keyLooksWrong, listProperties, getProperty, insertProperty, updateProperty, deleteProperty, signIn, signOut, isSignedIn, uploadFile, uploadFiles, publicStorageUrl };
+  window.RostomDB = { enabled, baseUrl, bucket, keyLooksWrong, listProperties, listAdminProperties, getProperty, insertProperty, updateProperty, deleteProperty, signIn, signOut, isSignedIn, uploadFile, uploadFiles, publicStorageUrl };
 })();
