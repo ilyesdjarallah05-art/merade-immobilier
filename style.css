@@ -394,6 +394,10 @@ button.menu-btn,
 
 /* v13 — minimalist desktop navigation, mobile 360 label, home bottom block */
 @media (min-width:981px){
+  .nav,
+  .nav.scrolled{
+    border-bottom:0;
+  }
   .nav .menu-btn,
   .menu-btn,
   button.menu-btn{
