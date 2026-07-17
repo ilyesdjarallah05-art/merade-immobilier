@@ -267,14 +267,24 @@
   ].join(',');
   const LEGACY_SUMMARY_SELECT = SUMMARY_SELECT.split(',').filter(column => column !== 'translations').join(',');
   function translationsColumnMissing(err){ return /translations|schema cache|column/i.test(clean(err?.message)); }
+  let translationsColumnAvailable = null;
+  function withoutTranslations(payload){
+    const legacyPayload = { ...payload };
+    delete legacyPayload.translations;
+    return legacyPayload;
+  }
 
   async function listProperties(options={}){
     const limit = Math.min(1000, Math.max(1, Number(options.limit || 1000)));
     const publishedFilter = options.published === false ? '' : '&or=(is_published.eq.true,is_published.is.null)';
     let rows;
-    try{ rows = await request(`properties?select=${SUMMARY_SELECT}${publishedFilter}&order=created_at.desc&limit=${limit}`); }
+    try{
+      rows = await request(`properties?select=${SUMMARY_SELECT}${publishedFilter}&order=created_at.desc&limit=${limit}`);
+      translationsColumnAvailable = true;
+    }
     catch(err){
       if(!translationsColumnMissing(err)) throw err;
+      translationsColumnAvailable = false;
       rows = await request(`properties?select=${LEGACY_SUMMARY_SELECT}${publishedFilter}&order=created_at.desc&limit=${limit}`);
     }
     return (rows || []).map(toCamel);
@@ -282,9 +292,13 @@
   async function listAdminProperties(){
     try{
       let rows;
-      try{ rows = await request(`properties?select=${SUMMARY_SELECT}&order=created_at.desc&limit=1000`); }
+      try{
+        rows = await request(`properties?select=${SUMMARY_SELECT}&order=created_at.desc&limit=1000`);
+        translationsColumnAvailable = true;
+      }
       catch(err){
         if(!translationsColumnMissing(err)) throw err;
+        translationsColumnAvailable = false;
         rows = await request(`properties?select=${LEGACY_SUMMARY_SELECT}&order=created_at.desc&limit=1000`);
       }
       return (rows || []).map(toCamel);
@@ -299,12 +313,50 @@
     return rows?.[0] ? toCamel(rows[0]) : null;
   }
   async function insertProperty(prop){
-    const rows = await request('properties', { requireAuth: true, method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify(toDb(prop)) });
-    return rows?.[0] ? toCamel(rows[0]) : prop;
+    const payload = toDb(prop);
+    let rows;
+    let usedLegacySchema = false;
+    if(translationsColumnAvailable === false){
+      usedLegacySchema = true;
+      rows = await request('properties', { requireAuth: true, method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify(withoutTranslations(payload)) });
+    }else{
+      try{
+        rows = await request('properties', { requireAuth: true, method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify(payload) });
+        translationsColumnAvailable = true;
+      }catch(err){
+        if(!translationsColumnMissing(err)) throw err;
+        translationsColumnAvailable = false;
+        usedLegacySchema = true;
+        console.warn('Supabase properties.translations is missing; publishing with the legacy schema.', err);
+        rows = await request('properties', { requireAuth: true, method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify(withoutTranslations(payload)) });
+      }
+    }
+    const saved = rows?.[0] ? toCamel(rows[0]) : prop;
+    if(usedLegacySchema) saved.translations = normalizeTranslations(prop.translations);
+    return saved;
   }
   async function updateProperty(id, prop){
-    const rows = await request(`properties?id=eq.${encodeURIComponent(id)}`, { requireAuth: true, method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify(toDb(prop)) });
-    return rows?.[0] ? toCamel(rows[0]) : { ...prop, id };
+    const payload = toDb(prop);
+    let rows;
+    let usedLegacySchema = false;
+    if(translationsColumnAvailable === false){
+      usedLegacySchema = true;
+      rows = await request(`properties?id=eq.${encodeURIComponent(id)}`, { requireAuth: true, method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify(withoutTranslations(payload)) });
+    }else{
+      try{
+        rows = await request(`properties?id=eq.${encodeURIComponent(id)}`, { requireAuth: true, method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify(payload) });
+        translationsColumnAvailable = true;
+      }catch(err){
+        if(!translationsColumnMissing(err)) throw err;
+        translationsColumnAvailable = false;
+        usedLegacySchema = true;
+        console.warn('Supabase properties.translations is missing; updating with the legacy schema.', err);
+        rows = await request(`properties?id=eq.${encodeURIComponent(id)}`, { requireAuth: true, method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify(withoutTranslations(payload)) });
+      }
+    }
+    const saved = rows?.[0] ? toCamel(rows[0]) : { ...prop, id };
+    if(usedLegacySchema) saved.translations = normalizeTranslations(prop.translations);
+    return saved;
   }
   async function deleteProperty(id){
     await request(`properties?id=eq.${encodeURIComponent(id)}`, { requireAuth: true, method: 'DELETE', headers: { Prefer: 'return=minimal' } });

@@ -7,4 +7,7 @@ alter table public.properties
 alter table public.properties
   alter column currency set default 'Md';
 
+-- Prompt PostgREST to notice the new column even if its notification queue
+-- was stale before this migration was applied.
+select pg_notification_queue_usage();
 notify pgrst, 'reload schema';
