@@ -60,9 +60,9 @@ Object.assign(I18N.en, {
   'admin.priceM':'Million (m)',
   'admin.descriptionDetails':'Description / More details',
   'admin.descriptionPlaceholder':'Write all property details here…',
-  'admin.descriptionHelp':'Write once in any language. The title, description, features and 360 room names are translated automatically when you publish.',
+  'admin.descriptionHelp':'Write once in any language. The property is saved immediately; visitors automatically receive the title, description, features and 360 room names in their device language.',
   'admin.translating':'Translating content…',
-  'admin.translationError':'Automatic translation could not be completed. Nothing was published; please try again.',
+  'admin.translationError':'Automatic translation is temporarily unavailable. The property stays saved in its original language and translation will be retried for visitors.',
   'detail.readMore':'Read more',
   'detail.readLess':'Read less'
 });
@@ -73,9 +73,9 @@ Object.assign(I18N.fr, {
   'admin.priceM':'Million (m)',
   'admin.descriptionDetails':'Description / Plus de détails',
   'admin.descriptionPlaceholder':'Écrivez ici tous les détails du bien…',
-  'admin.descriptionHelp':'Écrivez une seule fois, dans la langue de votre choix. Le titre, la description, les caractéristiques et les noms des pièces 360 sont traduits automatiquement lors de la publication.',
+  'admin.descriptionHelp':'Écrivez une seule fois, dans la langue de votre choix. Le bien est enregistré immédiatement ; les visiteurs reçoivent automatiquement le titre, la description, les caractéristiques et les pièces 360 dans la langue de leur appareil.',
   'admin.translating':'Traduction du contenu…',
-  'admin.translationError':'La traduction automatique n’a pas pu être terminée. Rien n’a été publié ; veuillez réessayer.',
+  'admin.translationError':'La traduction automatique est temporairement indisponible. Le bien reste enregistré dans sa langue d’origine et la traduction sera réessayée pour les visiteurs.',
   'detail.readMore':'Lire plus',
   'detail.readLess':'Lire moins'
 });
@@ -86,9 +86,9 @@ Object.assign(I18N.ar, {
   'admin.priceM':'مليون (m)',
   'admin.descriptionDetails':'الوصف / تفاصيل إضافية',
   'admin.descriptionPlaceholder':'اكتب كل تفاصيل العقار هنا…',
-  'admin.descriptionHelp':'اكتب مرة واحدة بأي لغة. تتم ترجمة العنوان والوصف والمميزات وأسماء غرف الجولة 360 تلقائياً عند النشر.',
+  'admin.descriptionHelp':'اكتب مرة واحدة بأي لغة. يُحفظ العقار فوراً، ويحصل الزائر تلقائياً على العنوان والوصف والمميزات وأسماء غرف الجولة 360 بلغة جهازه.',
   'admin.translating':'جاري ترجمة المحتوى…',
-  'admin.translationError':'تعذر إكمال الترجمة التلقائية. لم يتم نشر أي شيء؛ يرجى المحاولة مرة أخرى.',
+  'admin.translationError':'الترجمة التلقائية غير متاحة مؤقتاً. يبقى العقار محفوظاً بلغته الأصلية، وستتم إعادة محاولة الترجمة للزوار.',
   'detail.readMore':'اقرأ المزيد',
   'detail.readLess':'اقرأ أقل'
 });

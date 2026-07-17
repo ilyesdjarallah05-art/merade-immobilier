@@ -1059,9 +1059,10 @@ function initAdmin(){
       const wasEditing = Boolean(ADMIN_EDITING_ID);
       const editingId = ADMIN_EDITING_ID;
       const prop = await buildPropertyFromForm(form);
-      if(submitBtn) submitBtn.textContent = t('admin.translating');
-      try{ prop.translations = await translatePropertyContent(prop); }
-      catch(translationError){ console.error(translationError); throw new Error(t('admin.translationError')); }
+      // Publishing must never depend on a third-party translation service.
+      // Save the language the admin wrote immediately; missing languages are
+      // translated lazily for each visitor and cached by the visitor workflow.
+      prop.translations = sourcePropertyTranslations(prop);
       if(window.MeradeDB?.enabled){
         let remote;
         if(wasEditing) remote = await window.MeradeDB.updateProperty(editingId, prop);
@@ -1368,7 +1369,11 @@ function splitTranslationText(value, maxLength = 2400){
 }
 function normalizedFactText(value){
   const arabicDigits = {'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9','۰':'0','۱':'1','۲':'2','۳':'3','۴':'4','۵':'5','۶':'6','۷':'7','۸':'8','۹':'9'};
-  return String(value || '').replace(/[٠-٩۰-۹]/g, digit => arabicDigits[digit]).replace(/(\d),(\d)/g,'$1.$2');
+  return String(value || '')
+    .replace(/[٠-٩۰-۹]/g, digit => arabicDigits[digit])
+    .replace(/[٫،]/g,'.')
+    .replace(/٬/g,'')
+    .replace(/(\d),(\d)/g,'$1.$2');
 }
 function validateTranslationFacts(source, result){
   const sourceFacts = normalizedFactText(source);
@@ -1385,9 +1390,11 @@ function validateTranslationFactsForLanguage(source, translated, lang, facts){
   const requiresMd = facts?.requiresMd ?? /(^|\s)Md(?=\s|[.,;:!?)]|$)/.test(source);
   const requiresM = facts?.requiresM ?? /(^|\s)m(?=\s|[.,;:!?)]|$)/.test(source);
   const target = normalizedFactText(translated);
-  if(numbers.some(number => !target.includes(number))) throw new Error(`Translation lost a number in ${lang}.`);
-  if(requiresMd && !/(^|\s)Md(?=\s|[.,;:!?)]|$)/.test(translated)) throw new Error(`Translation lost Md in ${lang}.`);
-  if(requiresM && !/(^|\s)m(?=\s|[.,;:!?)]|$)/.test(translated)) throw new Error(`Translation lost m in ${lang}.`);
+  const targetNumbers = target.match(/\d+(?:\.\d+)?/g) || [];
+  const hasNumber = number => targetNumbers.some(candidate => candidate === number || Number(candidate) === Number(number));
+  if(numbers.some(number => !hasNumber(number))) throw new Error(`Translation lost a number in ${lang}.`);
+  if(requiresMd && !/(^|\s)Md(?=\s|[.,;:!?)]|$)/i.test(translated)) throw new Error(`Translation lost Md in ${lang}.`);
+  if(requiresM && !/(^|\s)m(?=\s|[.,;:!?)]|$)/i.test(translated)) throw new Error(`Translation lost m in ${lang}.`);
 }
 const TRANSLATION_LANGUAGE_NAMES = { en:'English', fr:'French', ar:'Modern Standard Arabic' };
 let TRANSLATION_PROVIDER_COOLDOWN_UNTIL = 0;
@@ -1424,6 +1431,16 @@ function detectTranslationSourceLanguage(value){
   if(/[\u0600-\u06ff]/.test(text)) return 'ar';
   const frenchWords = (text.toLowerCase().match(/\b(le|la|les|de|des|du|une|un|avec|dans|sur|pour|résidence|chambre|salon|terrasse|chauffage|climatisation|vente|location|meublé|ascenseur|interphone|alarme|bâtiment|isolation|thermique|acoustique)\b/g) || []).length;
   return /[àâçéèêëîïôùûüÿœæ]/i.test(text) || frenchWords > 0 ? 'fr' : 'en';
+}
+function sourcePropertyTranslations(prop){
+  const title = clean(prop?.title);
+  const description = clean(prop?.description);
+  const features = (prop?.features || []).map(clean).filter(Boolean);
+  const tourRooms = (prop?.virtualTourRooms || prop?.virtual_tour_rooms || []).map(room => clean(room?.room)).filter(Boolean);
+  const sourceText = [title, description, ...features, ...tourRooms].filter(Boolean).join('\n');
+  if(!sourceText) return {};
+  const lang = detectTranslationSourceLanguage(sourceText);
+  return { [lang]:{ title, description, features, tourRooms } };
 }
 function decodeTranslationEntities(value){
   const area = document.createElement('textarea');
