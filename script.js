@@ -259,6 +259,38 @@ function cssUrl(v){ return imageSrc(v).replace(/\\/g,'\\\\').replace(/'/g,"\\'")
 function propertyUrl(id){ return `${ROOT}pages/property.html?id=${encodeURIComponent(id)}`; }
 function langLocale(){ return currentLang()==='ar' ? 'ar-DZ' : currentLang()==='fr' ? 'fr-DZ' : 'en-DZ'; }
 function formatPrice(p){ const n = Number(String(p||'').replace(/\s/g,'')); return Number.isNaN(n) ? safeText(p) : new Intl.NumberFormat(langLocale()).format(n); }
+function localizedPropertyValue(p, field){
+  const translated = p?.translations?.[currentLang()]?.[field];
+  if(field === 'features') return Array.isArray(translated) && translated.length ? translated : (Array.isArray(p?.features) ? p.features : []);
+  return clean(translated) || clean(p?.[field]);
+}
+function propertyTitle(p){ return localizedPropertyValue(p, 'title') || 'Property'; }
+function propertyDescription(p){ return localizedPropertyValue(p, 'description'); }
+function propertyFeatures(p){ return localizedPropertyValue(p, 'features'); }
+function propertySearchText(p){
+  const translated = Object.values(p?.translations || {}).flatMap(value => [value?.title, value?.description, ...(Array.isArray(value?.features) ? value.features : [])]);
+  return [p?.title,p?.description,...(p?.features || []),...translated].filter(Boolean).join(' ');
+}
+function compactPriceParts(p){
+  const raw = Number(String(p?.price ?? '').replace(/\s/g,''));
+  if(!Number.isFinite(raw)) return { amount:p?.price || '', unit:clean(p?.currency) || 'Md', dzd:0 };
+  const currency = clean(p?.currency);
+  if(currency === 'Md') return { amount:raw, unit:'Md', dzd:raw * 10000000 };
+  if(currency === 'm') return { amount:raw, unit:'m', dzd:raw * 10000 };
+  // Legacy DZD records are converted for display without changing stored data.
+  if(/^DZD/i.test(currency) || !currency){
+    return raw >= 10000000
+      ? { amount:raw / 10000000, unit:'Md', dzd:raw }
+      : { amount:raw / 10000, unit:'m', dzd:raw };
+  }
+  return { amount:raw, unit:currency, dzd:raw };
+}
+function propertyPriceText(p){
+  if(clean(p?.price) === '') return '';
+  const parts = compactPriceParts(p);
+  return `${formatPrice(parts.amount)} ${safeText(parts.unit === 'Md' ? 'Md' : 'm')}`;
+}
+function propertyPriceInDzd(p){ return compactPriceParts(p).dzd; }
 function statusLabel(status){ return status === 'rent' ? t('card.forRent') : status === 'new' ? t('card.new') : t('card.forSale'); }
 function catLabel(cat){ const extra = {en:{land:'Land',offices:'Offices',commercial:'Commercial'},fr:{land:'Terrain',offices:'Bureaux',commercial:'Commercial'},ar:{land:'أراضي',offices:'مكاتب',commercial:'تجاري'}}; return {estates:t('cat.estates'),houses:t('cat.houses'),apartments:t('cat.apartments'),villas:t('cat.villas'),...(extra[currentLang()]||extra.en)}[cat] || t('cat.estates'); }
 function statusTypeLabel(p){ return `${statusLabel(p?.status)} · ${catLabel(p?.category)}`; }
@@ -418,7 +450,7 @@ function loadPannellumAssets(){
 
 function buildCard(p){
   const img = firstImage(p);
-  const price = p.price ? `${formatPrice(p.price)} ${safeText(p.currency || 'DZD')}` : '';
+  const price = propertyPriceText(p);
   const roomsValue = p.bedrooms || p.rooms;
   const areaValue = p.surface || p.landSurface;
   const has360 = hasVirtualTour(p);
@@ -429,14 +461,14 @@ function buildCard(p){
   ].filter(Boolean).map(m=>`<span>${cardIcon(m.icon)}${m.text}</span>`).join('');
   return `<article class="property-card reveal ${has360 ? 'has-360' : ''}" data-category="${safeText(p.category)}" data-status="${safeText(p.status)}" data-wilaya="${safeText(p.wilaya)}" data-commune="${safeText(p.commune)}">
     <a href="${propertyUrl(p.id)}" class="prop-media" aria-label="${safeText(t('card.details'))}">
-      ${img ? `<img src="${img}" alt="${safeText(p.title || 'Property')}" loading="lazy">` : '<div class="no-img"></div>'}
+      ${img ? `<img src="${img}" alt="${safeText(propertyTitle(p))}" loading="lazy">` : '<div class="no-img"></div>'}
       <span class="badge ${p.status==='rent'?'rent':p.status==='new'?'new':''}">${safeText(statusTypeLabel(p))}</span>
       ${has360 ? `<span class="tour-pill" aria-label="${safeText(t('card.tour'))}">${safeText(t('card.tour'))}</span>` : ''}
       <span class="explore-dot">${safeText(t('card.details'))} →</span>
     </a>
     <div class="prop-body">
       <div class="prop-topline"><span>${safeText(statusTypeLabel(p))}</span><span>${safeText(wilayaDisplay(p.wilaya))}</span></div>
-      <h3 class="prop-title">${safeText(p.title || 'Property')}</h3>
+      <h3 class="prop-title">${safeText(propertyTitle(p))}</h3>
       <p class="location prop-location-line">${cardIcon('pin')}<span>${propertyLocation(p)}</span></p>
       ${price ? `<p class="price">${price}</p>` : ''}
       ${meta ? `<div class="meta icon-meta">${meta}</div>` : ''}
@@ -507,7 +539,7 @@ function heroBackgroundImage(p){
 }
 function buildHeroSlide(p, index){
   const img = heroBackgroundImage(p);
-  const price = p.price ? `${formatPrice(p.price)} ${safeText(p.currency || 'DZD')}` : '';
+  const price = propertyPriceText(p);
   const roomsValue = p.bedrooms || p.rooms;
   const areaValue = p.surface || p.landSurface;
   const details = [
@@ -519,7 +551,7 @@ function buildHeroSlide(p, index){
     <div class="container home-slide-content">
       <a class="hero-property-card" href="${propertyUrl(p.id)}">
         <p class="hero-status">${safeText(statusTypeLabel(p))}</p>
-        <h1>${safeText(p.title || 'Property')}${price ? ` | ${price}` : ''}</h1>
+        <h1>${safeText(propertyTitle(p))}${price ? ` | ${price}` : ''}</h1>
         ${details ? `<div class="hero-specs">${details}</div>` : ''}
         <p class="hero-place">${cardIcon('pin')}<span>${propertyLocation(p)}</span></p>
         ${price ? `<p class="hero-price">${price}</p>` : ''}
@@ -570,8 +602,8 @@ function initListings(){
     const commune = $('#filterCommune')?.value || '';
     const maxPrice = Number(new URL(location.href).searchParams.get('maxPrice') || 0);
     let items = allProperties().filter(p => {
-      const hay = [p.title,p.description,p.wilaya,p.commune,p.address,catLabel(p.category),statusTypeLabel(p)].join(' ').toLowerCase();
-      const priceValue = Number(String(p.price || '').replace(/\s/g,''));
+      const hay = [propertySearchText(p),p.wilaya,p.commune,p.address,catLabel(p.category),statusTypeLabel(p)].join(' ').toLowerCase();
+      const priceValue = propertyPriceInDzd(p);
       const priceOk = !maxPrice || (!Number.isNaN(priceValue) && priceValue <= maxPrice);
       return (!q || hay.includes(q)) && (!status || p.status === status) && (!cat || p.category === cat) && (!wilaya || p.wilaya === wilaya) && (!commune || p.commune === commune) && priceOk && (!featuredOnly || p.featured);
     });
@@ -652,8 +684,8 @@ function initVirtualTour(p){
 function buildPropertyGallery(p){
   const images = extractImageList([p.images, p.image, p.mainImage, p.coverImage, p.photo, p.photos, p.gallery]).map(imageSrc).filter(Boolean);
   if(!images.length) return `<div class="detail-image detail-main-photo empty-photo"></div>`;
-  const thumbs = images.map((img,i)=>`<button class="gallery-thumb ${i===0?'active':''}" type="button" data-gallery-index="${i}" aria-label="Photo ${i+1}"><img src="${img}" alt="${safeText(p.title || 'Photo')} ${i+1}" loading="lazy"></button>`).join('');
-  return `<div class="detail-image detail-main-photo" id="detailMainPhoto" role="button" tabindex="0" aria-label="Open photo gallery"><img id="detailMainImage" src="${images[0]}" alt="${safeText(p.title || 'Property')}" data-gallery-index="0"></div>${images.length > 1 ? `<div class="gallery">${thumbs}</div>` : ''}`;
+  const thumbs = images.map((img,i)=>`<button class="gallery-thumb ${i===0?'active':''}" type="button" data-gallery-index="${i}" aria-label="Photo ${i+1}"><img src="${img}" alt="${safeText(propertyTitle(p) || 'Photo')} ${i+1}" loading="lazy"></button>`).join('');
+  return `<div class="detail-image detail-main-photo" id="detailMainPhoto" role="button" tabindex="0" aria-label="Open photo gallery"><img id="detailMainImage" src="${images[0]}" alt="${safeText(propertyTitle(p))}" data-gallery-index="0"></div>${images.length > 1 ? `<div class="gallery">${thumbs}</div>` : ''}`;
 }
 function initPropertyGallery(images){
   images = (images || []).map(imageSrc).filter(Boolean);
@@ -704,12 +736,14 @@ function initPropertyDetail(){
     wrap.innerHTML = `<div class="empty">${safeText(t('detail.notFound'))}</div>`;
     return;
   }
-  document.title = `${p.title || 'Property'} — Merade Immobilier`;
-  const price = p.price ? `${formatPrice(p.price)} ${safeText(p.currency || 'DZD')}` : '';
+  const title = propertyTitle(p);
+  const description = propertyDescription(p);
+  document.title = `${title} — Merade Immobilier`;
+  const price = propertyPriceText(p);
   const details = [
     [t('detail.type'), catLabel(p.category)], [t('detail.status'), statusTypeLabel(p)], [t('detail.virtualTour'), hasVirtualTour(p) ? t('detail.tourStart') : ''], [t('detail.wilaya'), wilayaDisplay(p.wilaya)], [t('detail.commune'), p.commune], [t('detail.address'), p.address], [t('detail.price'), price], [t('detail.surface'), p.surface && `${p.surface} ${t('card.surface')}`], [t('detail.land'), p.landSurface && `${p.landSurface} ${t('card.surface')}`], [t('detail.rooms'), p.rooms], [t('detail.bedrooms'), p.bedrooms], [t('detail.bathrooms'), p.bathrooms], [t('detail.floor'), p.floor], [t('detail.year'), p.yearBuilt], [t('detail.phone'), p.phone]
   ].filter(([,v])=>clean(v)).map(([k,v])=>`<div class="detail-item"><small>${safeText(k)}</small><strong>${safeText(v)}</strong></div>`).join('');
-  const features = (p.features || []).filter(Boolean).map(f=>`<li>${safeText(f)}</li>`).join('');
+  const features = propertyFeatures(p).filter(Boolean).map(f=>`<li>${safeText(f)}</li>`).join('');
   const virtualTour = buildVirtualTourSection(p);
   wrap.innerHTML = `<div class="detail-grid detail-grid-v10">
     <section class="detail-media-col">
@@ -717,20 +751,36 @@ function initPropertyDetail(){
     </section>
     <aside class="detail-side glass">
       <p class="eyebrow">${safeText(statusTypeLabel(p))}</p>
-      <h1 class="title">${safeText(p.title || 'Property')}</h1>
+      <h1 class="title">${safeText(title)}</h1>
       ${price ? `<p class="price detail-price">${price}</p>` : ''}
       <p class="location detail-location">${[p.commune,wilayaDisplay(p.wilaya)].filter(Boolean).map(safeText).join(' · ')}</p>
       <div class="detail-list">${details}</div>
       <div class="hero-cta"><a class="btn" href="${ROOT}pages/contact.html">${safeText(t('detail.visit'))}</a>${p.phone ? `<a class="btn-outline" href="tel:${safeText(p.phone)}">${safeText(t('detail.call'))}</a>` : ''}</div>
     </aside>
     <section class="detail-info-col">
-      ${p.description ? `<div class="glass info-block"><h2 class="prop-title">${safeText(t('detail.description'))}</h2><p class="sub">${safeText(p.description)}</p></div>` : ''}
+      ${description ? `<div class="glass info-block description-block"><h2 class="prop-title">${safeText(t('detail.description'))}</h2><p class="sub property-description" id="propertyDescriptionText">${safeText(description)}</p><button class="description-toggle" type="button" data-description-toggle aria-controls="propertyDescriptionText" aria-expanded="false" data-more="${safeText(t('detail.readMore'))}" data-less="${safeText(t('detail.readLess'))}">${safeText(t('detail.readMore'))}</button></div>` : ''}
       ${features ? `<div class="glass info-block"><h2 class="prop-title">${safeText(t('detail.features'))}</h2><ul class="check-list">${features}</ul></div>` : ''}
     </section>
     ${virtualTour ? `<section class="detail-tour-col">${virtualTour}</section>` : ''}
   </div>`;
   initPropertyGallery(extractImageList([p.images, p.image, p.mainImage, p.coverImage, p.photo, p.photos, p.gallery]));
+  initDescriptionToggles();
   initVirtualTour(p);
+}
+
+function initDescriptionToggles(){
+  $$('[data-description-toggle]').forEach(button => {
+    const text = document.getElementById(button.getAttribute('aria-controls'));
+    if(!text) return;
+    const needsToggle = text.scrollHeight > text.clientHeight + 2;
+    button.classList.toggle('hidden', !needsToggle);
+    button.addEventListener('click', () => {
+      const expanded = button.getAttribute('aria-expanded') === 'true';
+      button.setAttribute('aria-expanded', String(!expanded));
+      text.classList.toggle('expanded', !expanded);
+      button.textContent = expanded ? button.dataset.more : button.dataset.less;
+    });
+  });
 }
 
 function initContactForm(){
@@ -880,7 +930,10 @@ async function startEditProperty(id){
   ADMIN_EXISTING_IMAGES = Array.from(new Set(extractImageList([p.images, p.image, p.mainImage, p.coverImage, p.photo, p.photos, p.gallery]).map(imageSrc).filter(Boolean)));
   ADMIN_TOUR_ROOMS = normalizeTourRooms(p).map(r=>({ ...r, hotspots: normalizeHotspots(r.hotspots) }));
   ADMIN_HOTSPOT_ROOM_INDEX = 0;
-  ['title','category','status','wilaya','commune','address','price','currency','surface','landSurface','rooms','bedrooms','bathrooms','floor','yearBuilt','phone','description'].forEach(name=>setFormValue(form, name, p[name] || ''));
+  ['title','category','status','wilaya','commune','address','surface','landSurface','rooms','bedrooms','bathrooms','floor','yearBuilt','phone','description'].forEach(name=>setFormValue(form, name, p[name] || ''));
+  const priceParts = compactPriceParts(p);
+  setFormValue(form, 'price', priceParts.amount);
+  setFormValue(form, 'currency', priceParts.unit === 'm' ? 'm' : 'Md');
   setFormValue(form, 'features', (p.features || []).join('\n'));
   setFormValue(form, 'featured', p.featured);
   setFormValue(form, 'heroFeatured', p.heroFeatured);
@@ -897,7 +950,7 @@ async function startEditProperty(id){
 }
 function resetAdminForm(){
   const form = $('#propertyForm'); if(!form) return;
-  form.reset(); form.elements.currency && (form.elements.currency.value = 'DZD');
+  form.reset(); form.elements.currency && (form.elements.currency.value = 'Md');
   ADMIN_EDITING_ID = ''; ADMIN_EXISTING_IMAGES = []; ADMIN_TOUR_ROOMS = []; ADMIN_HOTSPOT_ROOM_INDEX = 0; ADMIN_SELECTED_POINT = null; destroyAdminViewer();
   renderImageManager(); renderTourBuilder(); $('#hotspotEditor')?.classList.add('hidden');
   $('#publishTitle') && ($('#publishTitle').textContent = t('admin.title'));
@@ -922,7 +975,7 @@ async function buildPropertyFromForm(form){
     wilaya: clean(fd.get('wilaya')),
     commune: clean(fd.get('commune')),
     price: clean(fd.get('price')),
-    currency: clean(fd.get('currency')) || 'DZD',
+    currency: clean(fd.get('currency')) === 'm' ? 'm' : 'Md',
     surface: clean(fd.get('surface')),
     rooms: clean(fd.get('rooms')),
     bedrooms: clean(fd.get('bedrooms')),
@@ -991,6 +1044,9 @@ function initAdmin(){
       const wasEditing = Boolean(ADMIN_EDITING_ID);
       const editingId = ADMIN_EDITING_ID;
       const prop = await buildPropertyFromForm(form);
+      if(submitBtn) submitBtn.textContent = t('admin.translating');
+      try{ prop.translations = await translatePropertyContent(prop); }
+      catch(translationError){ console.error(translationError); throw new Error(t('admin.translationError')); }
       if(window.MeradeDB?.enabled){
         let remote;
         if(wasEditing) remote = await window.MeradeDB.updateProperty(editingId, prop);
@@ -1075,7 +1131,7 @@ function propertySortNewest(list){
 }
 function buildOverlayPropertyCard(p, extraClass = ''){
   const img = firstImage(p) || 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1200&q=74';
-  const price = p.price ? `${formatPrice(p.price)} ${safeText(p.currency || 'DZD')}` : '';
+  const price = propertyPriceText(p);
   const roomsValue = p.bedrooms || p.rooms;
   const areaValue = p.surface || p.landSurface;
   const meta = [
@@ -1087,7 +1143,7 @@ function buildOverlayPropertyCard(p, extraClass = ''){
     <span class="overlay-shade"></span>
     ${hasVirtualTour(p) ? `<span class="overlay-tour-pill">${safeText(t('card.tour'))}</span>` : ''}
     <span class="overlay-card-content">
-      <strong>${safeText(p.title || 'Property')}</strong>
+      <strong>${safeText(propertyTitle(p))}</strong>
       <small>${cardIcon('pin')}<span>${propertyLocation(p)}</span></small>
       ${price ? `<b>${price}</b>` : ''}
       ${meta ? `<em>${meta}</em>` : ''}
@@ -1159,11 +1215,11 @@ function aiDetectIntent(query){
   else if(/شراء|بيع|للبيع|sale|buy|acheter|vente/.test(q)) intent.status = 'sale';
   intent.rooms = aiNumberWord(query);
   intent.wantsTour = /360|جوله|visite|tour/.test(q);
-  const budgetMatch = q.match(/(\d+(?:[\.,]\d+)?)\s*(milliard|md|مليار|million|millions|مليون|ملايين)/);
+  const budgetMatch = q.match(/(\d+(?:[\.,]\d+)?)\s*(milliard|md|مليار|million|millions|مليون|ملايين|m\b)/);
   if(budgetMatch){
     const n = Number(budgetMatch[1].replace(',','.'));
     const unit = budgetMatch[2];
-    intent.budget = /milliard|md|مليار/.test(unit) ? n * 10000000 : n * 1000000;
+    intent.budget = /milliard|md|مليار/.test(unit) ? n * 10000000 : n * 10000;
   } else {
     const raw = q.match(/(\d{6,})/);
     if(raw) intent.budget = Number(raw[1]);
@@ -1177,7 +1233,7 @@ function aiDetectIntent(query){
 }
 function aiScoreProperty(p, intent){
   let score = 0;
-  const hay = aiNormalize([p.title,p.description,p.category,p.status,p.wilaya,wilayaDisplay(p.wilaya),p.commune,p.address,catLabel(p.category),statusTypeLabel(p)].join(' '));
+  const hay = aiNormalize([propertySearchText(p),p.category,p.status,p.wilaya,wilayaDisplay(p.wilaya),p.commune,p.address,catLabel(p.category),statusTypeLabel(p)].join(' '));
   if(intent.category && p.category === intent.category) score += 7;
   if(intent.status && p.status === intent.status) score += 5;
   if(intent.location && hay.includes(aiNormalize(intent.location).split(' - ').pop())) score += 5;
@@ -1187,7 +1243,7 @@ function aiScoreProperty(p, intent){
     else if(values.some(v => Math.abs(v - intent.rooms) === 1)) score += 1.4;
   }
   if(intent.wantsTour && hasVirtualTour(p)) score += 2;
-  const price = Number(String(p.price || '').replace(/\s/g,''));
+  const price = propertyPriceInDzd(p);
   if(intent.budget && !Number.isNaN(price) && price <= intent.budget) score += 2;
   aiNormalize(intent.q).split(/\s+/).filter(w => w.length > 3).slice(0,8).forEach(w => { if(hay.includes(w)) score += .35; });
   return score;
@@ -1203,10 +1259,10 @@ function aiFindMatches(query){
 }
 function aiMiniResultCard(p){
   const img = firstImage(p);
-  const price = p.price ? `${formatPrice(p.price)} ${safeText(p.currency || 'DZD')}` : '';
+  const price = propertyPriceText(p);
   return `<a class="ai-result-card" href="${propertyUrl(p.id)}">
-    ${img ? `<img src="${img}" alt="${safeText(p.title || 'Property')}" loading="lazy">` : '<span class="ai-result-noimg"></span>'}
-    <span><strong>${safeText(p.title || 'Property')}</strong><small>${propertyLocation(p)}</small>${price ? `<b>${price}</b>` : ''}</span>
+    ${img ? `<img src="${img}" alt="${safeText(propertyTitle(p))}" loading="lazy">` : '<span class="ai-result-noimg"></span>'}
+    <span><strong>${safeText(propertyTitle(p))}</strong><small>${propertyLocation(p)}</small>${price ? `<b>${price}</b>` : ''}</span>
   </a>`;
 }
 const AI_PROVIDER_NAME = 'Pollinations.ai';
@@ -1219,9 +1275,9 @@ function aiFetchWithTimeout(url, options = {}, timeout = AI_TIMEOUT_MS){
   return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
 }
 function aiFormatListingForPrompt(p, index){
-  const price = p.price ? `${formatPrice(p.price)} ${p.currency || 'DZD'}` : 'price not listed';
+  const price = propertyPriceText(p) || 'price not listed';
   const bits = [
-    `${index + 1}. ${p.title || 'Property'}`,
+    `${index + 1}. ${propertyTitle(p)}`,
     `type: ${catLabel(p.category) || p.category || 'property'}`,
     `status: ${statusTypeLabel(p) || p.status || 'available'}`,
     `location: ${propertyLocation(p) || 'Algeria'}`,
@@ -1259,6 +1315,85 @@ function aiExtractProviderText(response){
   if(typeof content === 'string') return content;
   if(Array.isArray(content)) return content.map(part => part?.text || part?.content || '').join(' ').trim();
   return '';
+}
+function parseAiJson(text){
+  const cleaned = clean(text).replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');
+  const start = cleaned.indexOf('{'), end = cleaned.lastIndexOf('}');
+  if(start < 0 || end <= start) throw new Error('Translation response was not JSON.');
+  return JSON.parse(cleaned.slice(start, end + 1));
+}
+function splitTranslationText(value, maxLength = 2400){
+  const text = String(value || '').replace(/\r\n/g,'\n').trim();
+  if(!text) return [];
+  const chunks = [];
+  for(const paragraph of text.split(/\n{2,}/)){
+    let remaining = paragraph.trim();
+    while(remaining.length > maxLength){
+      let cut = remaining.lastIndexOf(' ', maxLength);
+      if(cut < Math.floor(maxLength * .6)) cut = maxLength;
+      chunks.push(remaining.slice(0, cut).trim());
+      remaining = remaining.slice(cut).trim();
+    }
+    if(remaining) chunks.push(remaining);
+  }
+  return chunks;
+}
+function normalizedFactText(value){
+  const arabicDigits = {'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9','۰':'0','۱':'1','۲':'2','۳':'3','۴':'4','۵':'5','۶':'6','۷':'7','۸':'8','۹':'9'};
+  return String(value || '').replace(/[٠-٩۰-۹]/g, digit => arabicDigits[digit]).replace(/(\d),(\d)/g,'$1.$2');
+}
+function validateTranslationFacts(source, result){
+  const sourceFacts = normalizedFactText(source);
+  const numbers = sourceFacts.match(/\d+(?:\.\d+)?/g) || [];
+  const requiresMd = /(^|\s)Md(?=\s|[.,;:!?)]|$)/.test(source);
+  const requiresM = /(^|\s)m(?=\s|[.,;:!?)]|$)/.test(source);
+  for(const lang of ['en','fr','ar']){
+    const target = normalizedFactText(result[lang]);
+    if(numbers.some(number => !target.includes(number))) throw new Error(`Translation lost a number in ${lang}.`);
+    if(requiresMd && !/(^|\s)Md(?=\s|[.,;:!?)]|$)/.test(result[lang])) throw new Error(`Translation lost Md in ${lang}.`);
+    if(requiresM && !/(^|\s)m(?=\s|[.,;:!?)]|$)/.test(result[lang])) throw new Error(`Translation lost m in ${lang}.`);
+  }
+}
+async function requestAutomaticTranslation(source, kind = 'description'){
+  const response = await aiFetchWithTimeout(AI_ENDPOINT, {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body:JSON.stringify({
+      model:AI_MODEL,
+      messages:[
+        { role:'system', content:`You are a meticulous professional real-estate translator for Algeria. Detect the source language and translate it into English, French and Modern Standard Arabic. Preserve every fact, number, proper noun, address, phone number, measurement, line meaning, and the price units Md/m. Never summarize, embellish, explain, or add facts. Use natural real-estate terminology. If the source is already in a target language, reproduce its meaning faithfully. Return ONLY valid JSON with exactly this shape: {"en":"...","fr":"...","ar":"..."}.` },
+        { role:'user', content:`Content type: ${kind}\n\nSOURCE:\n${source}` }
+      ],
+      temperature:0,
+      max_tokens:3200,
+      stream:false
+    })
+  }, 30000);
+  const data = await response.json().catch(async () => ({ text: await response.text().catch(() => '') }));
+  if(!response.ok) throw new Error(data?.error?.message || data?.message || `Translation error ${response.status}`);
+  const parsed = parseAiJson(aiExtractProviderText(data));
+  const result = { en:clean(parsed.en), fr:clean(parsed.fr), ar:clean(parsed.ar) };
+  if(!result.en || !result.fr || !result.ar) throw new Error('Translation response was incomplete.');
+  validateTranslationFacts(source, result);
+  return result;
+}
+async function translatePropertyContent(prop){
+  const result = { en:{title:'',description:'',features:[]}, fr:{title:'',description:'',features:[]}, ar:{title:'',description:'',features:[]} };
+  const title = clean(prop.title);
+  if(title){
+    const translatedTitle = await requestAutomaticTranslation(title, 'property title');
+    for(const lang of ['en','fr','ar']) result[lang].title = translatedTitle[lang];
+  }
+  const descriptionChunks = splitTranslationText(prop.description);
+  for(const chunk of descriptionChunks){
+    const translatedChunk = await requestAutomaticTranslation(chunk, 'one exact part of a longer property description');
+    for(const lang of ['en','fr','ar']) result[lang].description += `${result[lang].description ? '\n\n' : ''}${translatedChunk[lang]}`;
+  }
+  for(const feature of (prop.features || []).filter(Boolean)){
+    const translatedFeature = await requestAutomaticTranslation(feature, 'short property feature');
+    for(const lang of ['en','fr','ar']) result[lang].features.push(translatedFeature[lang]);
+  }
+  return result;
 }
 async function aiAskProvider(query, items){
   const response = await aiFetchWithTimeout(AI_ENDPOINT, {

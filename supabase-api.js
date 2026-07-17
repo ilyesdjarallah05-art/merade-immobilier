@@ -45,6 +45,22 @@
     if(raw.startsWith('[')){ try { return normalizeTextList(JSON.parse(raw)); } catch {} }
     return raw.split(/\n|,/).map(clean).filter(Boolean);
   }
+  function normalizeTranslations(value){
+    if(!value) return {};
+    if(typeof value === 'string'){ try { return normalizeTranslations(JSON.parse(value)); } catch { return {}; } }
+    if(typeof value !== 'object' || Array.isArray(value)) return {};
+    const result = {};
+    ['en','fr','ar'].forEach(lang => {
+      const item = value[lang];
+      if(!item || typeof item !== 'object') return;
+      result[lang] = {
+        title:clean(item.title),
+        description:clean(item.description),
+        features:normalizeTextList(item.features)
+      };
+    });
+    return result;
+  }
 
   const SESSION_KEY = 'meradeSupabaseSessionV1';
   function getSession(){ try { return JSON.parse(sessionStorage.getItem(SESSION_KEY)) || null; } catch { return null; } }
@@ -121,7 +137,7 @@
       commune: row.commune || '',
       address: row.address || '',
       price: row.price ?? '',
-      currency: row.currency || 'DZD',
+      currency: row.currency || 'Md',
       surface: row.surface ?? '',
       landSurface: row.land_surface ?? '',
       rooms: row.rooms || '',
@@ -131,6 +147,7 @@
       yearBuilt: row.year_built || '',
       phone: row.phone || '',
       description: row.description || '',
+      translations: normalizeTranslations(row.translations),
       features: normalizeTextList(row.features),
       images: normalizeMediaList([row.images, row.image, row.main_image, row.cover_image, row.photo, row.photos, row.gallery]),
       featured: Boolean(row.featured),
@@ -157,7 +174,7 @@
       commune: prop.commune || null,
       address: prop.address || null,
       price: numberOrNull(prop.price),
-      currency: prop.currency || 'DZD',
+      currency: prop.currency === 'm' ? 'm' : 'Md',
       surface: numberOrNull(prop.surface),
       land_surface: numberOrNull(prop.landSurface),
       rooms: prop.rooms || null,
@@ -167,6 +184,7 @@
       year_built: prop.yearBuilt || null,
       phone: prop.phone || null,
       description: prop.description || null,
+      translations: normalizeTranslations(prop.translations),
       features: normalizeTextList(prop.features),
       images: normalizeMediaList(prop.images),
       featured: Boolean(prop.featured),
@@ -243,19 +261,31 @@
   const SUMMARY_SELECT = [
     'id','title','category','status','wilaya','commune','address','price','currency',
     'surface','land_surface','rooms','bedrooms','bathrooms','floor','year_built','phone',
-    'description','features','images','featured','hero_featured','hero_order','is_published','has_virtual_tour',
+    'description','translations','features','images','featured','hero_featured','hero_order','is_published','has_virtual_tour',
     'virtual_tour_type','virtual_tour_url','virtual_tour_rooms','created_at'
   ].join(',');
+  const LEGACY_SUMMARY_SELECT = SUMMARY_SELECT.split(',').filter(column => column !== 'translations').join(',');
+  function translationsColumnMissing(err){ return /translations|schema cache|column/i.test(clean(err?.message)); }
 
   async function listProperties(options={}){
     const limit = Math.min(1000, Math.max(1, Number(options.limit || 1000)));
     const publishedFilter = options.published === false ? '' : '&or=(is_published.eq.true,is_published.is.null)';
-    const rows = await request(`properties?select=${SUMMARY_SELECT}${publishedFilter}&order=created_at.desc&limit=${limit}`);
+    let rows;
+    try{ rows = await request(`properties?select=${SUMMARY_SELECT}${publishedFilter}&order=created_at.desc&limit=${limit}`); }
+    catch(err){
+      if(!translationsColumnMissing(err)) throw err;
+      rows = await request(`properties?select=${LEGACY_SUMMARY_SELECT}${publishedFilter}&order=created_at.desc&limit=${limit}`);
+    }
     return (rows || []).map(toCamel);
   }
   async function listAdminProperties(){
     try{
-      const rows = await request(`properties?select=${SUMMARY_SELECT}&order=created_at.desc&limit=1000`);
+      let rows;
+      try{ rows = await request(`properties?select=${SUMMARY_SELECT}&order=created_at.desc&limit=1000`); }
+      catch(err){
+        if(!translationsColumnMissing(err)) throw err;
+        rows = await request(`properties?select=${LEGACY_SUMMARY_SELECT}&order=created_at.desc&limit=1000`);
+      }
       return (rows || []).map(toCamel);
     }catch(err){
       console.warn('Admin full property list failed, falling back to public list:', err);
