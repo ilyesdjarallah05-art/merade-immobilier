@@ -56,7 +56,8 @@
       result[lang] = {
         title:clean(item.title),
         description:clean(item.description),
-        features:normalizeTextList(item.features)
+        features:normalizeTextList(item.features),
+        tourRooms:normalizeTextList(item.tourRooms)
       };
     });
     return result;

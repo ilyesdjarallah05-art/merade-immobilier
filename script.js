@@ -1350,11 +1350,18 @@ function validateTranslationFacts(source, result){
   const requiresMd = /(^|\s)Md(?=\s|[.,;:!?)]|$)/.test(source);
   const requiresM = /(^|\s)m(?=\s|[.,;:!?)]|$)/.test(source);
   for(const lang of ['en','fr','ar']){
-    const target = normalizedFactText(result[lang]);
-    if(numbers.some(number => !target.includes(number))) throw new Error(`Translation lost a number in ${lang}.`);
-    if(requiresMd && !/(^|\s)Md(?=\s|[.,;:!?)]|$)/.test(result[lang])) throw new Error(`Translation lost Md in ${lang}.`);
-    if(requiresM && !/(^|\s)m(?=\s|[.,;:!?)]|$)/.test(result[lang])) throw new Error(`Translation lost m in ${lang}.`);
+    validateTranslationFactsForLanguage(source, result[lang], lang, { sourceFacts, numbers, requiresMd, requiresM });
   }
+}
+function validateTranslationFactsForLanguage(source, translated, lang, facts){
+  const sourceFacts = facts?.sourceFacts ?? normalizedFactText(source);
+  const numbers = facts?.numbers ?? (sourceFacts.match(/\d+(?:\.\d+)?/g) || []);
+  const requiresMd = facts?.requiresMd ?? /(^|\s)Md(?=\s|[.,;:!?)]|$)/.test(source);
+  const requiresM = facts?.requiresM ?? /(^|\s)m(?=\s|[.,;:!?)]|$)/.test(source);
+  const target = normalizedFactText(translated);
+  if(numbers.some(number => !target.includes(number))) throw new Error(`Translation lost a number in ${lang}.`);
+  if(requiresMd && !/(^|\s)Md(?=\s|[.,;:!?)]|$)/.test(translated)) throw new Error(`Translation lost Md in ${lang}.`);
+  if(requiresM && !/(^|\s)m(?=\s|[.,;:!?)]|$)/.test(translated)) throw new Error(`Translation lost m in ${lang}.`);
 }
 async function requestAutomaticTranslation(source, kind = 'description'){
   const response = await aiFetchWithTimeout(AI_ENDPOINT, {
@@ -1447,7 +1454,7 @@ async function translatePropertyContent(prop){
   }
   return result;
 }
-const VISITOR_TRANSLATION_CACHE_KEY = 'meradeVisitorTranslationsV2';
+const VISITOR_TRANSLATION_CACHE_KEY = 'meradeVisitorTranslationsV3';
 function translationFingerprint(prop){
   const rooms = (prop?.virtualTourRooms || prop?.virtual_tour_rooms || []).map(room => room?.room || '');
   const source = [prop?.id,prop?.title,prop?.description,...(prop?.features || []),...rooms].join('|');
@@ -1504,33 +1511,32 @@ function propertyNeedsFullTranslation(prop, lang){
   if(rooms.length && !(Array.isArray(translated.tourRooms) && translated.tourRooms.length === rooms.length)) return true;
   return false;
 }
-async function requestAutomaticTitleBatch(properties){
+async function requestAutomaticTitleBatch(properties, lang){
   const titles = properties.map(p => clean(p.title));
+  const targetName = { en:'English', fr:'French', ar:'Modern Standard Arabic' }[lang] || 'English';
   const response = await aiFetchWithTimeout(AI_ENDPOINT, {
     method:'POST',
     headers:{ 'Content-Type':'application/json' },
     body:JSON.stringify({
       model:AI_TRANSLATION_MODEL,
       messages:[
-        { role:'system', content:'You are a meticulous professional real-estate translator for Algeria. Translate every property title into English, French and Modern Standard Arabic. Preserve names, locations, facts, numbers, and Md/m exactly. Never add or remove information. Keep the same array order. Return ONLY valid JSON with exactly this shape: {"en":["..."],"fr":["..."],"ar":["..."]}.' },
+        { role:'system', content:`You are a meticulous professional real-estate translator for Algeria. Translate every property title into ${targetName}. Preserve names, locations, facts, numbers, and Md/m exactly. Never add or remove information. Keep the same array order. Return ONLY valid JSON with exactly this shape: {"translations":["..."]}.` },
         { role:'user', content:JSON.stringify(titles) }
       ],
       temperature:0,
-      max_tokens:3200,
+      max_tokens:1800,
       response_format:{ type:'json_object' },
       stream:false
     })
-  }, 30000);
+  }, 22000);
   const data = await response.json().catch(async () => ({ text:await response.text().catch(()=>'') }));
   if(!response.ok) throw new Error(data?.error?.message || data?.message || `Translation error ${response.status}`);
   const parsed = parseAiJson(aiExtractProviderText(data));
-  for(const lang of ['en','fr','ar']){
-    if(!Array.isArray(parsed[lang]) || parsed[lang].length !== titles.length || parsed[lang].some(value => !clean(value))) throw new Error(`Title translation batch was incomplete for ${lang}.`);
-  }
+  const values = Array.isArray(parsed.translations) ? parsed.translations.map(clean) : [];
+  if(values.length !== titles.length || values.some(value => !value)) throw new Error(`Title translation batch was incomplete for ${lang}.`);
   return properties.map((property,index) => {
-    const values = { en:clean(parsed.en[index]), fr:clean(parsed.fr[index]), ar:clean(parsed.ar[index]) };
-    validateTranslationFacts(titles[index], values);
-    return { en:{title:values.en}, fr:{title:values.fr}, ar:{title:values.ar} };
+    validateTranslationFactsForLanguage(titles[index], values[index], lang);
+    return { [lang]:{ title:values[index] } };
   });
 }
 async function prepareVisitorPropertyTranslations(){
@@ -1551,10 +1557,10 @@ async function prepareVisitorPropertyTranslations(){
     return;
   }
   const missingTitles = properties.filter(property => clean(property.title) && !clean(property.translations?.[lang]?.title));
-  for(let start=0;start<missingTitles.length;start+=25){
-    const batch = missingTitles.slice(start,start+25);
+  for(let start=0;start<missingTitles.length;start+=12){
+    const batch = missingTitles.slice(start,start+12);
     try{
-      const translated = await requestAutomaticTitleBatch(batch);
+      const translated = await requestAutomaticTitleBatch(batch, lang);
       batch.forEach((property,index) => { mergePropertyTranslations(property, translated[index]); cacheVisitorTranslation(property); });
     }catch(err){ console.warn('Automatic title translation failed:', err); }
   }
