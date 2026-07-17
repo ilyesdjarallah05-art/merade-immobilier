@@ -327,8 +327,9 @@ function normalizeHotspots(list){
 }
 function normalizeTourRooms(p){
   const rawRooms = Array.isArray(p?.virtualTourRooms) ? p.virtualTourRooms : (Array.isArray(p?.virtual_tour_rooms) ? p.virtual_tour_rooms : []);
+  const translatedNames = Array.isArray(p?.translations?.[currentLang()]?.tourRooms) ? p.translations[currentLang()].tourRooms : [];
   return rawRooms.map((r,i)=>({
-    room: clean(r.room) || `${t('detail.tourRoom')} ${i+1}`,
+    room:clean(translatedNames[i]) || clean(r.room) || `${t('detail.tourRoom')} ${i+1}`,
     image: imageSrc(r.image),
     hotspots: normalizeHotspots(r.hotspots)
   })).filter(r=>r.image);
@@ -1267,6 +1268,7 @@ function aiMiniResultCard(p){
 }
 const AI_PROVIDER_NAME = 'Pollinations.ai';
 const AI_MODEL = 'openai';
+const AI_TRANSLATION_MODEL = 'openai-fast';
 const AI_ENDPOINT = 'https://text.pollinations.ai/openai?referrer=merade-immobilier';
 const AI_TIMEOUT_MS = 14000;
 function aiFetchWithTimeout(url, options = {}, timeout = AI_TIMEOUT_MS){
@@ -1359,16 +1361,17 @@ async function requestAutomaticTranslation(source, kind = 'description'){
     method:'POST',
     headers:{ 'Content-Type':'application/json' },
     body:JSON.stringify({
-      model:AI_MODEL,
+      model:AI_TRANSLATION_MODEL,
       messages:[
         { role:'system', content:`You are a meticulous professional real-estate translator for Algeria. Detect the source language and translate it into English, French and Modern Standard Arabic. Preserve every fact, number, proper noun, address, phone number, measurement, line meaning, and the price units Md/m. Never summarize, embellish, explain, or add facts. Use natural real-estate terminology. If the source is already in a target language, reproduce its meaning faithfully. Return ONLY valid JSON with exactly this shape: {"en":"...","fr":"...","ar":"..."}.` },
         { role:'user', content:`Content type: ${kind}\n\nSOURCE:\n${source}` }
       ],
       temperature:0,
       max_tokens:3200,
+      response_format:{ type:'json_object' },
       stream:false
     })
-  }, 30000);
+  }, 45000);
   const data = await response.json().catch(async () => ({ text: await response.text().catch(() => '') }));
   if(!response.ok) throw new Error(data?.error?.message || data?.message || `Translation error ${response.status}`);
   const parsed = parseAiJson(aiExtractProviderText(data));
@@ -1377,23 +1380,184 @@ async function requestAutomaticTranslation(source, kind = 'description'){
   validateTranslationFacts(source, result);
   return result;
 }
-async function translatePropertyContent(prop){
-  const result = { en:{title:'',description:'',features:[]}, fr:{title:'',description:'',features:[]}, ar:{title:'',description:'',features:[]} };
-  const title = clean(prop.title);
-  if(title){
-    const translatedTitle = await requestAutomaticTranslation(title, 'property title');
-    for(const lang of ['en','fr','ar']) result[lang].title = translatedTitle[lang];
+async function requestAutomaticPropertyTranslation(prop){
+  const source = {
+    title:clean(prop?.title),
+    description:clean(prop?.description),
+    features:(prop?.features || []).map(clean).filter(Boolean),
+    tourRooms:(prop?.tourRooms || prop?.virtualTourRooms || prop?.virtual_tour_rooms || []).map(room => clean(room?.room ?? room)).filter(Boolean)
+  };
+  const response = await aiFetchWithTimeout(AI_ENDPOINT, {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body:JSON.stringify({
+      model:AI_TRANSLATION_MODEL,
+      messages:[
+        { role:'system', content:'You are a meticulous professional real-estate translator for Algeria. Detect the source language and translate the supplied property into English, French and Modern Standard Arabic. Preserve every fact, number, proper noun, address, phone number, measurement, paragraph break, feature, room name, and the price units Md/m. Never summarize, embellish, explain, add, omit, or reorder information. Use natural real-estate terminology. Return ONLY valid JSON shaped exactly as {"en":{"title":"","description":"","features":[],"tourRooms":[]},"fr":{"title":"","description":"","features":[],"tourRooms":[]},"ar":{"title":"","description":"","features":[],"tourRooms":[]}}.' },
+        { role:'user', content:JSON.stringify(source) }
+      ],
+      temperature:0,
+      max_tokens:7000,
+      response_format:{ type:'json_object' },
+      stream:false
+    })
+  }, 45000);
+  const data = await response.json().catch(async () => ({ text:await response.text().catch(()=>'') }));
+  if(!response.ok) throw new Error(data?.error?.message || data?.message || `Translation error ${response.status}`);
+  const parsed = parseAiJson(aiExtractProviderText(data));
+  const result = {};
+  for(const lang of ['en','fr','ar']){
+    const value = parsed?.[lang] || {};
+    result[lang] = {
+      title:clean(value.title),
+      description:clean(value.description),
+      features:Array.isArray(value.features) ? value.features.map(clean).filter(Boolean) : [],
+      tourRooms:Array.isArray(value.tourRooms) ? value.tourRooms.map(clean).filter(Boolean) : []
+    };
+    if(source.title && !result[lang].title) throw new Error(`Property title translation was missing for ${lang}.`);
+    if(source.description && !result[lang].description) throw new Error(`Property description translation was missing for ${lang}.`);
+    if(result[lang].features.length !== source.features.length) throw new Error(`Property feature translation was incomplete for ${lang}.`);
+    if(result[lang].tourRooms.length !== source.tourRooms.length) throw new Error(`Virtual-tour room translation was incomplete for ${lang}.`);
   }
+  validateTranslationFacts(source.title, Object.fromEntries(['en','fr','ar'].map(lang => [lang,result[lang].title])));
+  validateTranslationFacts(source.description, Object.fromEntries(['en','fr','ar'].map(lang => [lang,result[lang].description])));
+  source.features.forEach((feature,index) => {
+    const translatedFeature = Object.fromEntries(['en','fr','ar'].map(lang => [lang,result[lang].features[index]]));
+    validateTranslationFacts(feature, translatedFeature);
+  });
+  source.tourRooms.forEach((room,index) => {
+    const translatedRoom = Object.fromEntries(['en','fr','ar'].map(lang => [lang,result[lang].tourRooms[index]]));
+    validateTranslationFacts(room, translatedRoom);
+  });
+  return result;
+}
+async function translatePropertyContent(prop){
+  const title = clean(prop?.title);
+  const description = clean(prop?.description);
+  const features = (prop?.features || []).map(clean).filter(Boolean);
+  const tourRooms = (prop?.virtualTourRooms || prop?.virtual_tour_rooms || []).map(room => clean(room?.room)).filter(Boolean);
+  if(title.length + description.length + features.join('').length + tourRooms.join('').length <= 8000){
+    return requestAutomaticPropertyTranslation({ title, description, features, tourRooms });
+  }
+  const result = await requestAutomaticPropertyTranslation({ title, description:'', features, tourRooms });
   const descriptionChunks = splitTranslationText(prop.description);
   for(const chunk of descriptionChunks){
     const translatedChunk = await requestAutomaticTranslation(chunk, 'one exact part of a longer property description');
     for(const lang of ['en','fr','ar']) result[lang].description += `${result[lang].description ? '\n\n' : ''}${translatedChunk[lang]}`;
   }
-  for(const feature of (prop.features || []).filter(Boolean)){
-    const translatedFeature = await requestAutomaticTranslation(feature, 'short property feature');
-    for(const lang of ['en','fr','ar']) result[lang].features.push(translatedFeature[lang]);
-  }
   return result;
+}
+const VISITOR_TRANSLATION_CACHE_KEY = 'meradeVisitorTranslationsV2';
+function translationFingerprint(prop){
+  const rooms = (prop?.virtualTourRooms || prop?.virtual_tour_rooms || []).map(room => room?.room || '');
+  const source = [prop?.id,prop?.title,prop?.description,...(prop?.features || []),...rooms].join('|');
+  let hash = 2166136261;
+  for(let i=0;i<source.length;i++){ hash ^= source.charCodeAt(i); hash = Math.imul(hash, 16777619); }
+  return `${clean(prop?.id) || 'property'}-${(hash >>> 0).toString(36)}`;
+}
+function visitorTranslationCache(){
+  try{ const value = JSON.parse(localStorage.getItem(VISITOR_TRANSLATION_CACHE_KEY)); return value && typeof value === 'object' ? value : {}; }
+  catch{ return {}; }
+}
+function writeVisitorTranslationCache(cache){
+  try{
+    const keys = Object.keys(cache);
+    while(keys.length > 60) delete cache[keys.shift()];
+    localStorage.setItem(VISITOR_TRANSLATION_CACHE_KEY, JSON.stringify(cache));
+  }catch{}
+}
+function mergePropertyTranslations(prop, incoming){
+  if(!prop || !incoming) return;
+  prop.translations = prop.translations && typeof prop.translations === 'object' ? prop.translations : {};
+  for(const lang of ['en','fr','ar']){
+    const current = prop.translations[lang] && typeof prop.translations[lang] === 'object' ? prop.translations[lang] : {};
+    const next = incoming[lang] && typeof incoming[lang] === 'object' ? incoming[lang] : {};
+    prop.translations[lang] = {
+      title:clean(current.title) || clean(next.title),
+      description:clean(current.description) || clean(next.description),
+      features:Array.isArray(current.features) && current.features.length ? current.features : (Array.isArray(next.features) ? next.features.map(clean).filter(Boolean) : []),
+      tourRooms:Array.isArray(current.tourRooms) && current.tourRooms.length ? current.tourRooms : (Array.isArray(next.tourRooms) ? next.tourRooms.map(clean).filter(Boolean) : [])
+    };
+  }
+}
+function applyCachedVisitorTranslation(prop){
+  const cache = visitorTranslationCache();
+  const cached = cache[translationFingerprint(prop)];
+  if(cached) mergePropertyTranslations(prop, cached);
+}
+function cacheVisitorTranslation(prop){
+  const cache = visitorTranslationCache();
+  const key = translationFingerprint(prop);
+  const existing = cache[key] || {};
+  const combined = {};
+  for(const lang of ['en','fr','ar']) combined[lang] = { ...(existing[lang] || {}), ...(prop.translations?.[lang] || {}) };
+  delete cache[key];
+  cache[key] = combined;
+  writeVisitorTranslationCache(cache);
+}
+function propertyNeedsFullTranslation(prop, lang){
+  const translated = prop?.translations?.[lang] || {};
+  if(clean(prop?.title) && !clean(translated.title)) return true;
+  if(clean(prop?.description) && !clean(translated.description)) return true;
+  if((prop?.features || []).length && !(Array.isArray(translated.features) && translated.features.length)) return true;
+  const rooms = prop?.virtualTourRooms || prop?.virtual_tour_rooms || [];
+  if(rooms.length && !(Array.isArray(translated.tourRooms) && translated.tourRooms.length === rooms.length)) return true;
+  return false;
+}
+async function requestAutomaticTitleBatch(properties){
+  const titles = properties.map(p => clean(p.title));
+  const response = await aiFetchWithTimeout(AI_ENDPOINT, {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body:JSON.stringify({
+      model:AI_TRANSLATION_MODEL,
+      messages:[
+        { role:'system', content:'You are a meticulous professional real-estate translator for Algeria. Translate every property title into English, French and Modern Standard Arabic. Preserve names, locations, facts, numbers, and Md/m exactly. Never add or remove information. Keep the same array order. Return ONLY valid JSON with exactly this shape: {"en":["..."],"fr":["..."],"ar":["..."]}.' },
+        { role:'user', content:JSON.stringify(titles) }
+      ],
+      temperature:0,
+      max_tokens:3200,
+      response_format:{ type:'json_object' },
+      stream:false
+    })
+  }, 30000);
+  const data = await response.json().catch(async () => ({ text:await response.text().catch(()=>'') }));
+  if(!response.ok) throw new Error(data?.error?.message || data?.message || `Translation error ${response.status}`);
+  const parsed = parseAiJson(aiExtractProviderText(data));
+  for(const lang of ['en','fr','ar']){
+    if(!Array.isArray(parsed[lang]) || parsed[lang].length !== titles.length || parsed[lang].some(value => !clean(value))) throw new Error(`Title translation batch was incomplete for ${lang}.`);
+  }
+  return properties.map((property,index) => {
+    const values = { en:clean(parsed.en[index]), fr:clean(parsed.fr[index]), ar:clean(parsed.ar[index]) };
+    validateTranslationFacts(titles[index], values);
+    return { en:{title:values.en}, fr:{title:values.fr}, ar:{title:values.ar} };
+  });
+}
+async function prepareVisitorPropertyTranslations(){
+  if(isAdminScreen()) return;
+  const lang = currentLang();
+  const properties = allProperties();
+  properties.forEach(applyCachedVisitorTranslation);
+  if($('#propertyDetail')){
+    const id = new URL(location.href).searchParams.get('id');
+    const property = properties.find(item => item.id === id);
+    if(property && propertyNeedsFullTranslation(property, lang)){
+      try{
+        const translated = await translatePropertyContent(property);
+        mergePropertyTranslations(property, translated);
+        cacheVisitorTranslation(property);
+      }catch(err){ console.warn('Automatic property translation failed:', err); }
+    }
+    return;
+  }
+  const missingTitles = properties.filter(property => clean(property.title) && !clean(property.translations?.[lang]?.title));
+  for(let start=0;start<missingTitles.length;start+=25){
+    const batch = missingTitles.slice(start,start+25);
+    try{
+      const translated = await requestAutomaticTitleBatch(batch);
+      batch.forEach((property,index) => { mergePropertyTranslations(property, translated[index]); cacheVisitorTranslation(property); });
+    }catch(err){ console.warn('Automatic title translation failed:', err); }
+  }
 }
 async function aiAskProvider(query, items){
   const response = await aiFetchWithTimeout(AI_ENDPOINT, {
@@ -1486,6 +1650,11 @@ async function init(){
     const [, locationsResult] = await Promise.allSettled([loadDatabaseProperties(), loadLocationData()]);
     if(locationsResult.status === 'fulfilled') LOCATION_DATA = locationsResult.value;
     fillWilayaSelects(); applyUrlFilters(); bindLocationControls();
+
+    // Follow the visitor's device language on first visit and translate dynamic
+    // property content before it is rendered. Saved/cached translations are
+    // reused, so the translation engine is only called for missing content.
+    await prepareVisitorPropertyTranslations();
 
     // Render data-dependent UI only after Supabase/local data has settled.
     // This prevents the homepage hero from first showing a partial/fallback set

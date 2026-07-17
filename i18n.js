@@ -60,7 +60,7 @@ Object.assign(I18N.en, {
   'admin.priceM':'Million (m)',
   'admin.descriptionDetails':'Description / More details',
   'admin.descriptionPlaceholder':'Write all property details here…',
-  'admin.descriptionHelp':'Write once in any language. The title, description and features are translated automatically when you publish.',
+  'admin.descriptionHelp':'Write once in any language. The title, description, features and 360 room names are translated automatically when you publish.',
   'admin.translating':'Translating content…',
   'admin.translationError':'Automatic translation could not be completed. Nothing was published; please try again.',
   'detail.readMore':'Read more',
@@ -73,7 +73,7 @@ Object.assign(I18N.fr, {
   'admin.priceM':'Million (m)',
   'admin.descriptionDetails':'Description / Plus de détails',
   'admin.descriptionPlaceholder':'Écrivez ici tous les détails du bien…',
-  'admin.descriptionHelp':'Écrivez une seule fois, dans la langue de votre choix. Le titre, la description et les caractéristiques sont traduits automatiquement lors de la publication.',
+  'admin.descriptionHelp':'Écrivez une seule fois, dans la langue de votre choix. Le titre, la description, les caractéristiques et les noms des pièces 360 sont traduits automatiquement lors de la publication.',
   'admin.translating':'Traduction du contenu…',
   'admin.translationError':'La traduction automatique n’a pas pu être terminée. Rien n’a été publié ; veuillez réessayer.',
   'detail.readMore':'Lire plus',
@@ -86,14 +86,25 @@ Object.assign(I18N.ar, {
   'admin.priceM':'مليون (m)',
   'admin.descriptionDetails':'الوصف / تفاصيل إضافية',
   'admin.descriptionPlaceholder':'اكتب كل تفاصيل العقار هنا…',
-  'admin.descriptionHelp':'اكتب مرة واحدة بأي لغة. تتم ترجمة العنوان والوصف والمميزات تلقائياً عند النشر.',
+  'admin.descriptionHelp':'اكتب مرة واحدة بأي لغة. تتم ترجمة العنوان والوصف والمميزات وأسماء غرف الجولة 360 تلقائياً عند النشر.',
   'admin.translating':'جاري ترجمة المحتوى…',
   'admin.translationError':'تعذر إكمال الترجمة التلقائية. لم يتم نشر أي شيء؛ يرجى المحاولة مرة أخرى.',
   'detail.readMore':'اقرأ المزيد',
   'detail.readLess':'اقرأ أقل'
 });
 
-function currentLang(){ return localStorage.getItem(LANG_KEY) || DEFAULT_LANG; }
+function deviceLang(){
+  const preferred = [...(navigator.languages || []), navigator.language].filter(Boolean);
+  for(const value of preferred){
+    const base = String(value).toLowerCase().split('-')[0];
+    if(['en','fr','ar'].includes(base)) return base;
+  }
+  return DEFAULT_LANG;
+}
+function currentLang(){
+  const selected = localStorage.getItem(LANG_KEY);
+  return ['en','fr','ar'].includes(selected) ? selected : deviceLang();
+}
 function t(key){ return (I18N[currentLang()] && I18N[currentLang()][key]) || I18N.en[key] || key; }
 function applyLanguage(){
   const lang = currentLang();
