@@ -292,7 +292,19 @@ function propertyPriceText(p){
 }
 function propertyPriceInDzd(p){ return compactPriceParts(p).dzd; }
 function statusLabel(status){ return status === 'rent' ? t('card.forRent') : status === 'new' ? t('card.new') : t('card.forSale'); }
-function catLabel(cat){ const extra = {en:{land:'Land',offices:'Offices',commercial:'Commercial'},fr:{land:'Terrain',offices:'Bureaux',commercial:'Commercial'},ar:{land:'أراضي',offices:'مكاتب',commercial:'تجاري'}}; return {estates:t('cat.estates'),houses:t('cat.houses'),apartments:t('cat.apartments'),villas:t('cat.villas'),...(extra[currentLang()]||extra.en)}[cat] || t('cat.estates'); }
+function catLabel(cat){
+  const keys = {
+    estates:'cat.estates', houses:'cat.houses', apartments:'cat.apartments', villas:'cat.villas',
+    land:'cat.land', offices:'cat.offices', commercial:'cat.commercial', studio:'cat.studio',
+    loft:'cat.loft', building:'cat.building', duplex:'cat.duplex',
+    'country-property':'cat.countryProperty', triplex:'cat.triplex',
+    'commercial-premises':'cat.commercialPremises', ranch:'cat.ranch',
+    'commercial-apartment':'cat.commercialApartment',
+    'commercial-building':'cat.commercialBuilding', hotel:'cat.hotel',
+    'tourist-complex':'cat.touristComplex'
+  };
+  return t(keys[cat] || 'cat.estates');
+}
 function statusTypeLabel(p){ return `${statusLabel(p?.status)} · ${catLabel(p?.category)}`; }
 function propertyLocation(p){ return [p?.commune, wilayaDisplay(p?.wilaya)].filter(Boolean).map(safeText).join(', ') || safeText(p?.address || 'Algeria'); }
 function cardIcon(name){
@@ -1209,7 +1221,19 @@ function aiNumberWord(text){
 function aiDetectIntent(query){
   const q = aiNormalize(query);
   const intent = { q, category:'', status:'', rooms:0, location:'', budget:0, wantsTour:false };
-  if(/شقه|appartement|apartment|apart|\bf[1-9]\b/.test(q)) intent.category = 'apartments';
+  if(/مجمع سياحي|complexe touristique|tourist complex/.test(q)) intent.category = 'tourist-complex';
+  else if(/مبنى تجاري|عماره تجاريه|immeuble commercial|commercial building/.test(q)) intent.category = 'commercial-building';
+  else if(/شقه تجاريه|appartement commercial|commercial apartment/.test(q)) intent.category = 'commercial-apartment';
+  else if(/محل تجاري|محلات تجاريه|locaux commerciaux?|commercial premises?/.test(q)) intent.category = 'commercial-premises';
+  else if(/عقار ريفي|ملكيه ريفيه|propriete de campagne|country propert/.test(q)) intent.category = 'country-property';
+  else if(/استوديو|studio/.test(q)) intent.category = 'studio';
+  else if(/لوفت|loft/.test(q)) intent.category = 'loft';
+  else if(/دوبلكس|duplex/.test(q)) intent.category = 'duplex';
+  else if(/تريبلكس|triplex/.test(q)) intent.category = 'triplex';
+  else if(/فندق|hotel/.test(q)) intent.category = 'hotel';
+  else if(/مزرعه|ranch/.test(q)) intent.category = 'ranch';
+  else if(/عماره|بنايه|immeuble|building/.test(q)) intent.category = 'building';
+  else if(/شقه|appartement|apartment|apart|\bf[1-9]\b/.test(q)) intent.category = 'apartments';
   else if(/فيلا|villa/.test(q)) intent.category = 'villas';
   else if(/منزل|دار|بيت|maison|house/.test(q)) intent.category = 'houses';
   else if(/ارض|قطعه|terrain|land/.test(q)) intent.category = 'land';

@@ -93,6 +93,60 @@ Object.assign(I18N.ar, {
   'detail.readLess':'اقرأ أقل'
 });
 
+// Property type names are UI taxonomy, so they stay precise and consistent in
+// every language. Listing content still uses automatic translation on publish.
+Object.assign(I18N.en, {
+  'cat.land':'Land',
+  'cat.offices':'Offices',
+  'cat.commercial':'Commercial',
+  'cat.studio':'Studio',
+  'cat.loft':'Loft',
+  'cat.building':'Building',
+  'cat.duplex':'Duplex',
+  'cat.countryProperty':'Country property',
+  'cat.triplex':'Triplex',
+  'cat.commercialPremises':'Commercial premises',
+  'cat.ranch':'Ranch',
+  'cat.commercialApartment':'Commercial apartment',
+  'cat.commercialBuilding':'Commercial building',
+  'cat.hotel':'Hotel',
+  'cat.touristComplex':'Tourist complex'
+});
+Object.assign(I18N.fr, {
+  'cat.land':'Terrain',
+  'cat.offices':'Bureaux',
+  'cat.commercial':'Commercial',
+  'cat.studio':'Studio',
+  'cat.loft':'Loft',
+  'cat.building':'Immeuble',
+  'cat.duplex':'Duplex',
+  'cat.countryProperty':'Propriété de campagne',
+  'cat.triplex':'Triplex',
+  'cat.commercialPremises':'Locaux commerciaux',
+  'cat.ranch':'Ranch',
+  'cat.commercialApartment':'Appartement commercial',
+  'cat.commercialBuilding':'Immeuble commercial',
+  'cat.hotel':'Hôtel',
+  'cat.touristComplex':'Complexe touristique'
+});
+Object.assign(I18N.ar, {
+  'cat.land':'أرض',
+  'cat.offices':'مكاتب',
+  'cat.commercial':'تجاري',
+  'cat.studio':'استوديو',
+  'cat.loft':'لوفت',
+  'cat.building':'عمارة',
+  'cat.duplex':'دوبلكس',
+  'cat.countryProperty':'عقار ريفي',
+  'cat.triplex':'تريبلكس',
+  'cat.commercialPremises':'محلات تجارية',
+  'cat.ranch':'مزرعة',
+  'cat.commercialApartment':'شقة تجارية',
+  'cat.commercialBuilding':'مبنى تجاري',
+  'cat.hotel':'فندق',
+  'cat.touristComplex':'مجمع سياحي'
+});
+
 function deviceLang(){
   const preferred = [...(navigator.languages || []), navigator.language].filter(Boolean);
   for(const value of preferred){
