@@ -1,13 +1,13 @@
-/* Rostom Immobilier — Algeria locations
+/* Merade Immobilier — Algeria locations
    - Always shows the 69 wilayas locally.
    - When internet is available, it also tries to load communes from GeoAlgeria.
    - If online data is old/58 wilayas only, local 69 wilayas are still kept.
 */
 
-const ROSTOM_LOCATION_CACHE_KEY = 'rostomLocationDataV3_69Wilayas';
-const ROSTOM_REMOTE_COMMUNES_URL = 'https://cdn.jsdelivr.net/npm/geoalgeria/data/ecommerce/communes.json';
+const MERADE_LOCATION_CACHE_KEY = 'meradeLocationDataV3_69Wilayas';
+const MERADE_REMOTE_COMMUNES_URL = 'https://cdn.jsdelivr.net/npm/geoalgeria/data/ecommerce/communes.json';
 
-const ROSTOM_WILAYAS_FALLBACK = [
+const MERADE_WILAYAS_FALLBACK = [
   {code:'01', fr:'Adrar', ar:'أدرار'}, {code:'02', fr:'Chlef', ar:'الشلف'}, {code:'03', fr:'Laghouat', ar:'الأغواط'}, {code:'04', fr:'Oum El Bouaghi', ar:'أم البواقي'},
   {code:'05', fr:'Batna', ar:'باتنة'}, {code:'06', fr:'Béjaïa', ar:'بجاية'}, {code:'07', fr:'Biskra', ar:'بسكرة'}, {code:'08', fr:'Béchar', ar:'بشار'},
   {code:'09', fr:'Blida', ar:'البليدة'}, {code:'10', fr:'Bouira', ar:'البويرة'}, {code:'11', fr:'Tamanrasset', ar:'تمنراست'}, {code:'12', fr:'Tébessa', ar:'تبسة'},
@@ -28,7 +28,7 @@ const ROSTOM_WILAYAS_FALLBACK = [
   {code:'67', fr:'Ksar El Boukhari', ar:'قصر البخاري'}, {code:'68', fr:'Bou Saâda', ar:'بوسعادة'}, {code:'69', fr:'El Abiodh Sidi Cheikh', ar:'الأبيض سيدي الشيخ'}
 ];
 
-const ROSTOM_COMMUNES_FALLBACK = {
+const MERADE_COMMUNES_FALLBACK = {
   '05 - Batna': [
     {fr:'Batna', ar:'باتنة'}, {fr:'Douar Eddis', ar:'دوار الديس'}, {fr:'Bouaakal', ar:'بوعقال'}, {fr:'Fesdis', ar:'فسديس'}, {fr:'Oued Chaaba', ar:'وادي الشعبة'},
     {fr:'Aïn Touta', ar:'عين التوتة'}, {fr:'Arris', ar:'آريس'}, {fr:'Ichmoul', ar:'إشمول'}, {fr:"T'Kout", ar:'تكوت'}, {fr:'Merouana', ar:'مروانة'},
@@ -66,12 +66,12 @@ function ensureEveryWilayaHasAtLeastOneCommune(data){
 }
 
 function fallbackLocationData(){
-  return ensureEveryWilayaHasAtLeastOneCommune({wilayas: ROSTOM_WILAYAS_FALLBACK, communesByWilaya: {...ROSTOM_COMMUNES_FALLBACK}, source:'fallback-69'});
+  return ensureEveryWilayaHasAtLeastOneCommune({wilayas: MERADE_WILAYAS_FALLBACK, communesByWilaya: {...MERADE_COMMUNES_FALLBACK}, source:'fallback-69'});
 }
 
 function normalizeRemoteCommunes(rows){
-  const byCode = new Map(ROSTOM_WILAYAS_FALLBACK.map(w => [w.code, w]));
-  const communesByWilaya = {...ROSTOM_COMMUNES_FALLBACK};
+  const byCode = new Map(MERADE_WILAYAS_FALLBACK.map(w => [w.code, w]));
+  const communesByWilaya = {...MERADE_COMMUNES_FALLBACK};
   (Array.isArray(rows) ? rows : []).forEach(row => {
     const code = String(row.wilaya_code || row.wilayaCode || row.code_wilaya || '').padStart(2,'0');
     const fr = row.wilaya_name_fr || row.wilayaNameFr || row.wilaya || row.province || '';
@@ -91,19 +91,19 @@ function normalizeRemoteCommunes(rows){
 
 async function loadLocationData(){
   try{
-    const cached = JSON.parse(localStorage.getItem(ROSTOM_LOCATION_CACHE_KEY) || 'null');
+    const cached = JSON.parse(localStorage.getItem(MERADE_LOCATION_CACHE_KEY) || 'null');
     if(cached && cached.wilayas && cached.communesByWilaya && cached.wilayas.length >= 69) return cached;
   }catch{}
   try{
-    const res = await fetch(ROSTOM_REMOTE_COMMUNES_URL, {cache:'force-cache'});
+    const res = await fetch(MERADE_REMOTE_COMMUNES_URL, {cache:'force-cache'});
     if(!res.ok) throw new Error('locations fetch failed');
     const rows = await res.json();
     const data = normalizeRemoteCommunes(rows);
-    try{ localStorage.setItem(ROSTOM_LOCATION_CACHE_KEY, JSON.stringify(data)); }catch{}
+    try{ localStorage.setItem(MERADE_LOCATION_CACHE_KEY, JSON.stringify(data)); }catch{}
     return data;
   }catch{
     const data = fallbackLocationData();
-    try{ localStorage.setItem(ROSTOM_LOCATION_CACHE_KEY, JSON.stringify(data)); }catch{}
+    try{ localStorage.setItem(MERADE_LOCATION_CACHE_KEY, JSON.stringify(data)); }catch{}
     return data;
   }
 }

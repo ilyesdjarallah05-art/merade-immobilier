@@ -1,4 +1,4 @@
-# Rostom Immobilier
+# Merade Immobilier
 
 Minimal real estate website for Algeria with English, French and Arabic.
 
@@ -34,7 +34,7 @@ admin/index.html
 Admin code:
 
 ```txt
-Rostom2026
+Merade2026
 ```
 
 Then login with your Supabase admin email and password.

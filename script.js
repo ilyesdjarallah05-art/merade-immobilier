@@ -1,7 +1,7 @@
-const STORAGE_KEY = 'rostomImmobilierPropertiesV1';
-const HIDDEN_DEFAULTS_KEY = 'rostomHiddenDefaultPropertiesV1';
-const ADMIN_FLAG = 'rostomAdminUnlocked';
-const ADMIN_CODE = 'Rostom2026';
+const STORAGE_KEY = 'meradeImmobilierPropertiesV1';
+const HIDDEN_DEFAULTS_KEY = 'meradeHiddenDefaultPropertiesV1';
+const ADMIN_FLAG = 'meradeAdminUnlocked';
+const ADMIN_CODE = 'Merade2026';
 const ROOT = location.pathname.includes('/pages/') || location.pathname.includes('/admin/') ? '../' : './';
 let LOCATION_DATA = fallbackLocationData();
 let REMOTE_PROPERTIES = null;
@@ -20,10 +20,10 @@ const $$ = (selector, scope = document) => Array.from(scope.querySelectorAll(sel
 
 const EXTRA_TRANSLATIONS = {
   en: {
-    'search.keyword':'Keyword','search.offerType':'Offer Type','search.type':'Type','search.state':'State','search.price':'Price','search.placeholder':'Search by keyword','search.allTypes':'All types','search.anyPrice':'Any price','cat.land':'Land','cat.offices':'Offices','cat.commercial':'Commercial','section.mustSee.title':'Must-See Properties','section.mustSee.sub':'Explore the most sought-after properties, carefully selected for you.','admin.heroFeatured':'Show in homepage top slider','admin.heroOrder':'Top slider order (1–8)','home.bottom.kicker':'Need help choosing?','home.bottom.title':'Tell us what you need.','home.bottom.sub':'Share your budget, location and property type. Rostom Immobilier will guide you to the right option with a clean, direct process.','home.bottom.primary':'Contact us','home.bottom.secondary':'Browse properties'
+    'search.keyword':'Keyword','search.offerType':'Offer Type','search.type':'Type','search.state':'State','search.price':'Price','search.placeholder':'Search by keyword','search.allTypes':'All types','search.anyPrice':'Any price','cat.land':'Land','cat.offices':'Offices','cat.commercial':'Commercial','section.mustSee.title':'Must-See Properties','section.mustSee.sub':'Explore the most sought-after properties, carefully selected for you.','admin.heroFeatured':'Show in homepage top slider','admin.heroOrder':'Top slider order (1–8)','home.bottom.kicker':'Need help choosing?','home.bottom.title':'Tell us what you need.','home.bottom.sub':'Share your budget, location and property type. Merade Immobilier will guide you to the right option with a clean, direct process.','home.bottom.primary':'Contact us','home.bottom.secondary':'Browse properties'
   },
   fr: {
-    'search.keyword':'Mot-clé','search.offerType':'Type d’offre','search.type':'Type','search.state':'Wilaya','search.price':'Prix','search.placeholder':'Rechercher par mot-clé','search.allTypes':'Tous les types','search.anyPrice':'Tous les prix','cat.land':'Terrain','cat.offices':'Bureaux','cat.commercial':'Commercial','section.mustSee.title':'Biens incontournables','section.mustSee.sub':'Découvrez les biens les plus demandés, sélectionnés avec soin pour vous.','admin.heroFeatured':'Afficher dans le slider principal de la page d’accueil','admin.heroOrder':'Ordre du slider principal (1–8)','home.bottom.kicker':'Besoin d’aide pour choisir ?','home.bottom.title':'Dites-nous ce qu’il vous faut.','home.bottom.sub':'Partagez votre budget, la localisation et le type de bien. Rostom Immobilier vous guide vers la bonne option avec une démarche simple et directe.','home.bottom.primary':'Contactez-nous','home.bottom.secondary':'Voir les biens'
+    'search.keyword':'Mot-clé','search.offerType':'Type d’offre','search.type':'Type','search.state':'Wilaya','search.price':'Prix','search.placeholder':'Rechercher par mot-clé','search.allTypes':'Tous les types','search.anyPrice':'Tous les prix','cat.land':'Terrain','cat.offices':'Bureaux','cat.commercial':'Commercial','section.mustSee.title':'Biens incontournables','section.mustSee.sub':'Découvrez les biens les plus demandés, sélectionnés avec soin pour vous.','admin.heroFeatured':'Afficher dans le slider principal de la page d’accueil','admin.heroOrder':'Ordre du slider principal (1–8)','home.bottom.kicker':'Besoin d’aide pour choisir ?','home.bottom.title':'Dites-nous ce qu’il vous faut.','home.bottom.sub':'Partagez votre budget, la localisation et le type de bien. Merade Immobilier vous guide vers la bonne option avec une démarche simple et directe.','home.bottom.primary':'Contactez-nous','home.bottom.secondary':'Voir les biens'
   },
   ar: {
     'search.keyword':'كلمة البحث','search.offerType':'نوع العرض','search.type':'النوع','search.state':'الولاية','search.price':'السعر','search.placeholder':'ابحث بكلمة مفتاحية','search.allTypes':'كل الأنواع','search.anyPrice':'كل الأسعار','cat.land':'أرض','cat.offices':'مكاتب','cat.commercial':'تجاري','section.mustSee.title':'عقارات لا تفوّت','section.mustSee.sub':'اكتشف أكثر العقارات طلبًا، مختارة بعناية من أجلك.','admin.heroFeatured':'إظهار العقار في السلايدر الرئيسي للصفحة الرئيسية','admin.heroOrder':'ترتيب السلايدر الرئيسي (1–8)','home.bottom.kicker':'تحتاج مساعدة في الاختيار؟','home.bottom.title':'أخبرنا ماذا تحتاج.','home.bottom.sub':'أرسل الميزانية، المكان ونوع العقار. روستم للعقارات يوجهك للخيار المناسب بطريقة بسيطة ومباشرة.','home.bottom.primary':'تواصل معنا','home.bottom.secondary':'تصفح العقارات'
@@ -36,7 +36,7 @@ Object.assign(EXTRA_TRANSLATIONS.en, {
   'home.cities.sub':'Explore properties in the main locations we serve. Choose a city and start browsing.',
   'home.cities.properties':'Properties',
   'home.why.kicker':'Why choose us',
-  'home.why.title':'Why choose Rostom Immobilier?',
+  'home.why.title':'Why choose Merade Immobilier?',
   'home.why.trust.title':'Trusted expertise',
   'home.why.trust.sub':'Clear guidance to connect buyers, renters and owners with confidence.',
   'home.why.offer.title':'A diverse offer',
@@ -50,7 +50,7 @@ Object.assign(EXTRA_TRANSLATIONS.fr, {
   'home.cities.sub':'Découvrez des biens immobiliers dans les principales localités que nous desservons. Choisissez votre ville et commencez votre exploration.',
   'home.cities.properties':'Propriétés',
   'home.why.kicker':'Pourquoi nous choisir',
-  'home.why.title':'Pourquoi choisir Rostom Immobilier ?',
+  'home.why.title':'Pourquoi choisir Merade Immobilier ?',
   'home.why.trust.title':'Une expertise de confiance',
   'home.why.trust.sub':'Un accompagnement clair pour connecter acheteurs, locataires et propriétaires en confiance.',
   'home.why.offer.title':'Une offre diversifiée',
@@ -85,12 +85,12 @@ Object.assign(EXTRA_TRANSLATIONS.en, {
   'home.handpicked.sub':'A carefully selected collection to meet your real estate expectations. Scroll to explore the best deals.',
   'home.about.kicker':'About us',
   'home.about.titleA':'About',
-  'home.about.sub':'Rostom Immobilier helps clients in Algeria find clear, verified and well-presented properties with fast contact, modern browsing and simple guidance.',
+  'home.about.sub':'Merade Immobilier helps clients in Algeria find clear, verified and well-presented properties with fast contact, modern browsing and simple guidance.',
   'home.about.point1':'Clean property cards',
   'home.about.point2':'Fast filtering',
   'home.about.point3':'360° tours when available',
   'ai.nudge':'Can I help you?',
-  'ai.title':'Rostom AI',
+  'ai.title':'Merade AI',
   'ai.subtitle':'Ask me about buying, renting, budget, location or available listings.',
   'ai.welcome':'Hello! I can help you find a property, compare options, or answer questions about buying and renting in Algeria. Tell me your budget, city and property type.',
   'ai.placeholder':'Write your need…',
@@ -111,12 +111,12 @@ Object.assign(EXTRA_TRANSLATIONS.fr, {
   'home.handpicked.sub':'Une collection soigneusement choisie pour répondre à vos attentes immobilières. Faites défiler pour voir les meilleures offres.',
   'home.about.kicker':'À propos',
   'home.about.titleA':'À propos de',
-  'home.about.sub':'Rostom Immobilier aide les clients en Algérie à trouver des biens clairs, vérifiés et bien présentés avec un contact rapide, une navigation moderne et un accompagnement simple.',
+  'home.about.sub':'Merade Immobilier aide les clients en Algérie à trouver des biens clairs, vérifiés et bien présentés avec un contact rapide, une navigation moderne et un accompagnement simple.',
   'home.about.point1':'Cartes de biens claires',
   'home.about.point2':'Filtres rapides',
   'home.about.point3':'Visites 360° disponibles',
   'ai.nudge':'Puis-je vous aider ?',
-  'ai.title':'Rostom AI',
+  'ai.title':'Merade AI',
   'ai.subtitle':'Demandez-moi un achat, une location, un budget, une ville ou les annonces disponibles.',
   'ai.welcome':'Bonjour ! Je peux vous aider à trouver un bien, comparer des options ou répondre sur l’achat et la location en Algérie. Indiquez votre budget, la ville et le type de bien.',
   'ai.placeholder':'Écrivez votre besoin…',
@@ -142,7 +142,7 @@ Object.assign(EXTRA_TRANSLATIONS.ar, {
   'home.about.point2':'فلاتر سريعة',
   'home.about.point3':'جولات 360° عند توفرها',
   'ai.nudge':'هل يمكنني مساعدتك؟',
-  'ai.title':'Rostom AI',
+  'ai.title':'Merade AI',
   'ai.subtitle':'اسألني عن الشراء، الكراء، الميزانية، المدينة أو العقارات المتوفرة.',
   'ai.welcome':'مرحبا! يمكنني مساعدتك في إيجاد عقار، مقارنة الخيارات أو الإجابة عن الشراء والكراء في الجزائر. اكتب الميزانية، المدينة ونوع العقار.',
   'ai.placeholder':'اكتب طلبك…',
@@ -191,16 +191,16 @@ function savedProperties(){ try { return JSON.parse(localStorage.getItem(STORAGE
 function setSavedProperties(items){ localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); }
 function hiddenDefaultIds(){ try { return JSON.parse(localStorage.getItem(HIDDEN_DEFAULTS_KEY)) || []; } catch { return []; } }
 function setHiddenDefaultIds(items){ localStorage.setItem(HIDDEN_DEFAULTS_KEY, JSON.stringify(Array.from(new Set(items)))); }
-function defaultProperties(){ const hidden = new Set(hiddenDefaultIds()); return ROSTOM_DEFAULT_PROPERTIES.filter(p => !hidden.has(p.id)); }
+function defaultProperties(){ const hidden = new Set(hiddenDefaultIds()); return MERADE_DEFAULT_PROPERTIES.filter(p => !hidden.has(p.id)); }
 function localProperties(){ return [...savedProperties(), ...defaultProperties()].sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0)); }
 function allProperties(){ return (Array.isArray(REMOTE_PROPERTIES) ? REMOTE_PROPERTIES : localProperties()).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0)); }
 function isAdminScreen(){ return Boolean($('#adminList') || $('#loginScreen') || $('#adminApp')); }
 async function refreshAdminProperties(){
-  if(!window.RostomDB?.enabled || !window.RostomDB?.isSignedIn?.()) return false;
+  if(!window.MeradeDB?.enabled || !window.MeradeDB?.isSignedIn?.()) return false;
   try{
-    REMOTE_PROPERTIES = window.RostomDB.listAdminProperties
-      ? await window.RostomDB.listAdminProperties()
-      : await window.RostomDB.listProperties({ published:false, limit:1000 });
+    REMOTE_PROPERTIES = window.MeradeDB.listAdminProperties
+      ? await window.MeradeDB.listAdminProperties()
+      : await window.MeradeDB.listProperties({ published:false, limit:1000 });
     DB_STATUS = 'connected';
     return true;
   }catch(err){
@@ -209,16 +209,16 @@ async function refreshAdminProperties(){
   }
 }
 async function loadDatabaseProperties(){
-  if(!window.RostomDB?.enabled){ DB_STATUS = 'local'; return; }
+  if(!window.MeradeDB?.enabled){ DB_STATUS = 'local'; return; }
   try{
     const detailId = $('#propertyDetail') ? new URL(location.href).searchParams.get('id') : '';
-    if(detailId && window.RostomDB.getProperty){
-      const one = await window.RostomDB.getProperty(detailId);
+    if(detailId && window.MeradeDB.getProperty){
+      const one = await window.MeradeDB.getProperty(detailId);
       REMOTE_PROPERTIES = one ? [one] : [];
-    } else if(isAdminScreen() && window.RostomDB.isSignedIn?.()) {
+    } else if(isAdminScreen() && window.MeradeDB.isSignedIn?.()) {
       await refreshAdminProperties();
     } else {
-      REMOTE_PROPERTIES = await window.RostomDB.listProperties({ limit:1000 });
+      REMOTE_PROPERTIES = await window.MeradeDB.listProperties({ limit:1000 });
       DB_STATUS = 'connected';
     }
   }catch(err){
@@ -227,7 +227,7 @@ async function loadDatabaseProperties(){
     DB_STATUS = 'offline';
   }
 }
-function usingDatabase(){ return Array.isArray(REMOTE_PROPERTIES) && window.RostomDB?.enabled; }
+function usingDatabase(){ return Array.isArray(REMOTE_PROPERTIES) && window.MeradeDB?.enabled; }
 function clean(v){ return String(v || '').trim(); }
 function safeText(v){ return clean(v).replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch])); }
 function safeUrl(v){ const url = clean(v); return /^https?:\/\//i.test(url) ? url.replace(/"/g,'%22') : ''; }
@@ -235,8 +235,8 @@ function imageSrc(v){
   let url = clean(v);
   if(!url) return '';
   if(/^(javascript:|vbscript:|data:(?!image\/))/i.test(url)) return '';
-  if(window.RostomDB?.enabled && /^(photos|tours)\//i.test(url)){
-    url = window.RostomDB.publicStorageUrl(url);
+  if(window.MeradeDB?.enabled && /^(photos|tours)\//i.test(url)){
+    url = window.MeradeDB.publicStorageUrl(url);
   }
   return url.replace(/"/g,'%22');
 }
@@ -315,16 +315,16 @@ function fileToDataUrl(file){ return new Promise((resolve,reject)=>{ const reade
 async function filesToUrls(files, folder){
   const list = Array.from(files || []);
   if(!list.length) return [];
-  if(window.RostomDB?.enabled && window.RostomDB?.isSignedIn?.()){
-    const uploaded = await window.RostomDB.uploadFiles(list, folder);
+  if(window.MeradeDB?.enabled && window.MeradeDB?.isSignedIn?.()){
+    const uploaded = await window.MeradeDB.uploadFiles(list, folder);
     return uploaded.map(item => item.publicUrl);
   }
   return Promise.all(list.map(fileToDataUrl));
 }
 async function roomImageToUrl(room){
   if(room.file){
-    if(window.RostomDB?.enabled && window.RostomDB?.isSignedIn?.()){
-      const uploaded = await window.RostomDB.uploadFile(room.file, 'tours');
+    if(window.MeradeDB?.enabled && window.MeradeDB?.isSignedIn?.()){
+      const uploaded = await window.MeradeDB.uploadFile(room.file, 'tours');
       return uploaded.publicUrl;
     }
     return await fileToDataUrl(room.file);
@@ -484,7 +484,7 @@ function heroSliderProperties(){
   // This prevents old/empty selected rows from creating white slides.
   const selectedWithOrderAndImage = selectedRaw.filter(p => heroOrderValue(p) && hasHeroImage(p)).slice(0,8);
   if(selectedWithOrderAndImage.length){
-    window.__rostomHeroDebug = { mode:'admin_ordered', count:selectedWithOrderAndImage.length, selectedInDatabase:selectedRaw.length, items:selectedWithOrderAndImage.map(p=>({id:p.id,title:p.title,heroFeatured:p.heroFeatured,heroOrder:p.heroOrder,image:firstImage(p)})) };
+    window.__meradeHeroDebug = { mode:'admin_ordered', count:selectedWithOrderAndImage.length, selectedInDatabase:selectedRaw.length, items:selectedWithOrderAndImage.map(p=>({id:p.id,title:p.title,heroFeatured:p.heroFeatured,heroOrder:p.heroOrder,image:firstImage(p)})) };
     return selectedWithOrderAndImage;
   }
 
@@ -492,13 +492,13 @@ function heroSliderProperties(){
   // Show only selected rows that actually have images.
   if(selectedRaw.length){
     const selectedWithImage = selectedRaw.filter(hasHeroImage).slice(0,8);
-    window.__rostomHeroDebug = { mode:'admin_selected_without_valid_order', count:selectedWithImage.length, selectedInDatabase:selectedRaw.length, items:selectedWithImage.map(p=>({id:p.id,title:p.title,heroFeatured:p.heroFeatured,heroOrder:p.heroOrder,image:firstImage(p)})) };
+    window.__meradeHeroDebug = { mode:'admin_selected_without_valid_order', count:selectedWithImage.length, selectedInDatabase:selectedRaw.length, items:selectedWithImage.map(p=>({id:p.id,title:p.title,heroFeatured:p.heroFeatured,heroOrder:p.heroOrder,image:firstImage(p)})) };
     return selectedWithImage;
   }
 
   // Only when the admin selected nothing, use a safe fallback list with images.
   const fallback = newest(items.filter(hasHeroImage)).slice(0,8);
-  window.__rostomHeroDebug = { mode:'fallback_no_admin_selection', count:fallback.length, selectedInDatabase:0, items:fallback.map(p=>({id:p.id,title:p.title,heroFeatured:p.heroFeatured,heroOrder:p.heroOrder,image:firstImage(p)})) };
+  window.__meradeHeroDebug = { mode:'fallback_no_admin_selection', count:fallback.length, selectedInDatabase:0, items:fallback.map(p=>({id:p.id,title:p.title,heroFeatured:p.heroFeatured,heroOrder:p.heroOrder,image:firstImage(p)})) };
   return fallback;
 }
 function heroBackgroundImage(p){
@@ -697,14 +697,14 @@ function initPropertyDetail(){
   const id = new URL(location.href).searchParams.get('id');
   const p = allProperties().find(x=>x.id === id);
   if(!p){
-    if(window.RostomDB?.enabled && REMOTE_PROPERTIES === null){
+    if(window.MeradeDB?.enabled && REMOTE_PROPERTIES === null){
       wrap.innerHTML = `<div class="detail-loading"><span class="loader-spinner" aria-hidden="true"></span></div>`;
       return;
     }
     wrap.innerHTML = `<div class="empty">${safeText(t('detail.notFound'))}</div>`;
     return;
   }
-  document.title = `${p.title || 'Property'} — Rostom Immobilier`;
+  document.title = `${p.title || 'Property'} — Merade Immobilier`;
   const price = p.price ? `${formatPrice(p.price)} ${safeText(p.currency || 'DZD')}` : '';
   const details = [
     [t('detail.type'), catLabel(p.category)], [t('detail.status'), statusTypeLabel(p)], [t('detail.virtualTour'), hasVirtualTour(p) ? t('detail.tourStart') : ''], [t('detail.wilaya'), wilayaDisplay(p.wilaya)], [t('detail.commune'), p.commune], [t('detail.address'), p.address], [t('detail.price'), price], [t('detail.surface'), p.surface && `${p.surface} ${t('card.surface')}`], [t('detail.land'), p.landSurface && `${p.landSurface} ${t('card.surface')}`], [t('detail.rooms'), p.rooms], [t('detail.bedrooms'), p.bedrooms], [t('detail.bathrooms'), p.bathrooms], [t('detail.floor'), p.floor], [t('detail.year'), p.yearBuilt], [t('detail.phone'), p.phone]
@@ -873,8 +873,8 @@ function bindTourBuilder(){
 function setFormValue(form, name, value){ const el = form.elements[name]; if(!el) return; if(el.type === 'checkbox') el.checked = Boolean(value); else el.value = value ?? ''; }
 async function startEditProperty(id){
   let p = allProperties().find(x=>x.id === id); const form = $('#propertyForm'); if(!p || !form) return;
-  if(window.RostomDB?.enabled && window.RostomDB?.getProperty){
-    try{ p = await window.RostomDB.getProperty(id) || p; }catch(err){ console.warn('Could not load full property for edit:', err); }
+  if(window.MeradeDB?.enabled && window.MeradeDB?.getProperty){
+    try{ p = await window.MeradeDB.getProperty(id) || p; }catch(err){ console.warn('Could not load full property for edit:', err); }
   }
   ADMIN_EDITING_ID = id;
   ADMIN_EXISTING_IMAGES = Array.from(new Set(extractImageList([p.images, p.image, p.mainImage, p.coverImage, p.photo, p.photos, p.gallery]).map(imageSrc).filter(Boolean)));
@@ -957,7 +957,7 @@ function initAdmin(){
   ensureAdminHelpers(); bindTourBuilder(); renderImageManager(); renderTourBuilder();
   const unlock = () => { loginScreen.classList.add('hidden'); adminApp.classList.remove('hidden'); renderAdminList(); fillAdminStats(); initHeroSlider(); };
   if(sessionStorage.getItem(ADMIN_FLAG) === 'yes'){
-    if(!window.RostomDB?.enabled || window.RostomDB?.isSignedIn?.()) unlock();
+    if(!window.MeradeDB?.enabled || window.MeradeDB?.isSignedIn?.()) unlock();
     else sessionStorage.removeItem(ADMIN_FLAG);
   }
   $('#loginForm')?.addEventListener('submit', async e=>{
@@ -966,23 +966,23 @@ function initAdmin(){
     const email = clean($('#adminEmail')?.value);
     const password = clean($('#adminPassword')?.value);
     if(code !== ADMIN_CODE){ showToast(t('admin.badCode')); return; }
-    if(window.RostomDB?.enabled && email && password){
-      try{ await window.RostomDB.signIn(email, password); await loadDatabaseProperties(); DB_STATUS = 'connected'; }
+    if(window.MeradeDB?.enabled && email && password){
+      try{ await window.MeradeDB.signIn(email, password); await loadDatabaseProperties(); DB_STATUS = 'connected'; }
       catch(err){ console.error(err); showToast(err.message || 'Supabase admin login failed. Check email/password.'); return; }
-    } else if(window.RostomDB?.enabled && (!email || !password)) {
+    } else if(window.MeradeDB?.enabled && (!email || !password)) {
       DB_STATUS = 'local';
       REMOTE_PROPERTIES = null;
     }
     sessionStorage.setItem(ADMIN_FLAG,'yes'); unlock();
   });
-  $('#logoutBtn')?.addEventListener('click',async ()=>{ sessionStorage.removeItem(ADMIN_FLAG); await window.RostomDB?.signOut?.(); location.reload(); });
+  $('#logoutBtn')?.addEventListener('click',async ()=>{ sessionStorage.removeItem(ADMIN_FLAG); await window.MeradeDB?.signOut?.(); location.reload(); });
   $('#cancelEditBtn')?.addEventListener('click', resetAdminForm);
   const form = $('#propertyForm');
   form?.addEventListener('submit', async e=>{
     e.preventDefault();
     const submitBtn = form.querySelector('button[type="submit"]');
     const originalText = submitBtn ? submitBtn.textContent : '';
-    if(window.RostomDB?.enabled && !window.RostomDB?.isSignedIn?.()){
+    if(window.MeradeDB?.enabled && !window.MeradeDB?.isSignedIn?.()){
       showToast('Login with admin email/password first.');
       return;
     }
@@ -991,10 +991,10 @@ function initAdmin(){
       const wasEditing = Boolean(ADMIN_EDITING_ID);
       const editingId = ADMIN_EDITING_ID;
       const prop = await buildPropertyFromForm(form);
-      if(window.RostomDB?.enabled){
+      if(window.MeradeDB?.enabled){
         let remote;
-        if(wasEditing) remote = await window.RostomDB.updateProperty(editingId, prop);
-        else remote = await window.RostomDB.insertProperty(prop);
+        if(wasEditing) remote = await window.MeradeDB.updateProperty(editingId, prop);
+        else remote = await window.MeradeDB.insertProperty(prop);
         const refreshed = await refreshAdminProperties();
         if(!refreshed){
           REMOTE_PROPERTIES = wasEditing ? (REMOTE_PROPERTIES || []).map(p=>p.id === editingId ? remote : p) : [remote, ...(REMOTE_PROPERTIES || [])];
@@ -1009,12 +1009,12 @@ function initAdmin(){
       if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = originalText || t('admin.submit'); }
     }
   });
-  $('#exportBtn')?.addEventListener('click',()=>{ const blob = new Blob([JSON.stringify(savedProperties(),null,2)],{type:'application/json'}); const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='rostom-properties-export.json'; a.click(); URL.revokeObjectURL(a.href); });
+  $('#exportBtn')?.addEventListener('click',()=>{ const blob = new Blob([JSON.stringify(savedProperties(),null,2)],{type:'application/json'}); const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='merade-properties-export.json'; a.click(); URL.revokeObjectURL(a.href); });
   $('#importFile')?.addEventListener('change', async e=>{ const file = e.target.files[0]; if(!file) return; try{ const data = JSON.parse(await file.text()); if(Array.isArray(data)){ setSavedProperties(data); renderAdminList(); fillAdminStats(); initHeroSlider(); showToast('Import done.'); } } catch{ showToast('Invalid import file.'); } });
 }
 async function deletePropertyById(id){
-  if(window.RostomDB?.enabled && usingDatabase()){
-    await window.RostomDB.deleteProperty(id);
+  if(window.MeradeDB?.enabled && usingDatabase()){
+    await window.MeradeDB.deleteProperty(id);
     const refreshed = await refreshAdminProperties();
     if(!refreshed) REMOTE_PROPERTIES = (REMOTE_PROPERTIES || []).filter(p => p.id !== id);
     return;
@@ -1211,7 +1211,7 @@ function aiMiniResultCard(p){
 }
 const AI_PROVIDER_NAME = 'Pollinations.ai';
 const AI_MODEL = 'openai';
-const AI_ENDPOINT = 'https://text.pollinations.ai/openai?referrer=rostom-immobilier';
+const AI_ENDPOINT = 'https://text.pollinations.ai/openai?referrer=merade-immobilier';
 const AI_TIMEOUT_MS = 14000;
 function aiFetchWithTimeout(url, options = {}, timeout = AI_TIMEOUT_MS){
   const controller = new AbortController();
@@ -1236,12 +1236,12 @@ function aiFormatListingForPrompt(p, index){
 function aiBuildPrompt(query, items){
   const langName = aiLang() === 'ar' || hasArabic(query) ? 'Arabic' : (aiLang() === 'fr' ? 'French' : 'English');
   const listings = items.length ? items.map(aiFormatListingForPrompt).join('\n') : 'No strong matching listings were found by the website matcher.';
-  return `You are Rostom AI, the website assistant for Rostom Immobilier in Algeria.
+  return `You are Merade AI, the website assistant for Merade Immobilier in Algeria.
 Reply in ${langName}, or in the same language/dialect used by the visitor.
 Be helpful, short, warm, and practical. Use Algerian real-estate context when useful.
 The visitor can ask about buying, renting, property choice, budget, neighborhoods, paperwork basics, or the listings.
 For property recommendations, use ONLY the website listings provided below. Do not invent properties, prices, phone numbers, or availability. If the listings are not enough, ask for city, budget, property type, rooms, and whether they want buying or renting.
-When matching listings exist, mention the best 1-3 options and why they fit. End with a simple next step: open the listing card or contact Rostom Immobilier.
+When matching listings exist, mention the best 1-3 options and why they fit. End with a simple next step: open the listing card or contact Merade Immobilier.
 
 Visitor message: ${query}
 
@@ -1319,7 +1319,7 @@ function initPropertyAI(){
   async function answer(query){
     addMessage(safeText(query), 'user');
     const { items } = aiFindMatches(query);
-    const thinking = addMessage('<span class="ai-thinking">Rostom AI is writing…</span>', 'bot');
+    const thinking = addMessage('<span class="ai-thinking">Merade AI is writing…</span>', 'bot');
     try{
       const text = await aiAskProvider(query, items);
       thinking.innerHTML = `${safeText(text).replace(/\n/g,'<br>')}${items.length ? `<div class="ai-results">${items.map(aiMiniResultCard).join('')}</div>` : `<br><small>${safeText(aiText('ai.onlySite'))}</small>`}`;

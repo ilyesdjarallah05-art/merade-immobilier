@@ -1,7 +1,7 @@
-/* Rostom Immobilier - demo property data
+/* Merade Immobilier - demo property data
    Later, this will come from a real database/API. */
 
-const ROSTOM_DEFAULT_PROPERTIES = [
+const MERADE_DEFAULT_PROPERTIES = [
   {
     id: 'demo-villa-batna', title: 'Modern villa in Batna', category: 'villas', status: 'sale', wilaya: '05 - Batna', commune: 'Batna',
     price: '95000000', currency: 'DZD', surface: '420', rooms: '6', bedrooms: '4', bathrooms: '3', floor: '', landSurface: '600', yearBuilt: '2021',

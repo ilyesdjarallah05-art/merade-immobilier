@@ -1,7 +1,7 @@
-/* Rostom Immobilier — tiny Supabase REST + Storage helper
+/* Merade Immobilier — tiny Supabase REST + Storage helper
    Static HTML/CSS/JS only. No npm, no build step. */
 (function(){
-  const cfg = window.ROSTOM_SUPABASE || {};
+  const cfg = window.MERADE_SUPABASE || {};
   const clean = v => String(v || '').trim();
   const baseUrl = clean(cfg.url).replace(/\/rest\/v1\/?$/,'').replace(/\/$/,'');
   const anonKey = clean(cfg.anonKey || cfg.publishableKey);
@@ -46,7 +46,7 @@
     return raw.split(/\n|,/).map(clean).filter(Boolean);
   }
 
-  const SESSION_KEY = 'rostomSupabaseSessionV1';
+  const SESSION_KEY = 'meradeSupabaseSessionV1';
   function getSession(){ try { return JSON.parse(sessionStorage.getItem(SESSION_KEY)) || null; } catch { return null; } }
   function sessionExpiresAt(session){ return Number(session?.expires_at || 0); }
   function sessionIsExpired(session, skewSeconds=60){
@@ -310,5 +310,5 @@
     return out;
   }
 
-  window.RostomDB = { enabled, baseUrl, bucket, keyLooksWrong, listProperties, listAdminProperties, getProperty, insertProperty, updateProperty, deleteProperty, signIn, signOut, isSignedIn, refreshSession, uploadFile, uploadFiles, publicStorageUrl };
+  window.MeradeDB = { enabled, baseUrl, bucket, keyLooksWrong, listProperties, listAdminProperties, getProperty, insertProperty, updateProperty, deleteProperty, signIn, signOut, isSignedIn, refreshSession, uploadFile, uploadFiles, publicStorageUrl };
 })();

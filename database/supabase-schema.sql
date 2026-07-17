@@ -1,4 +1,4 @@
--- Rostom Immobilier — Supabase secure schema + Storage + 360 virtual tours
+-- Merade Immobilier — Supabase secure schema + Storage + 360 virtual tours
 -- Run this whole file in Supabase > SQL Editor.
 -- Safe to run again after the previous version.
 

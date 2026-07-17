@@ -1,4 +1,4 @@
-# Rostom AI Chat Integration
+# Merade AI Chat Integration
 
 This project includes a floating AI assistant in the bottom-right corner of every public page.
 

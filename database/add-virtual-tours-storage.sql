@@ -1,4 +1,4 @@
--- Rostom Immobilier — quick upgrade only: Storage + 360 tour fields
+-- Merade Immobilier — quick upgrade only: Storage + 360 tour fields
 -- Use this if you already ran the old schema and only want the new fields.
 
 alter table public.properties add column if not exists has_virtual_tour boolean default false;
