@@ -288,7 +288,18 @@ function compactPriceParts(p){
 function propertyPriceText(p){
   if(clean(p?.price) === '') return '';
   const parts = compactPriceParts(p);
-  return `${formatPrice(parts.amount)} ${safeText(parts.unit === 'Md' ? 'Md' : 'm')}`;
+  const price = `${formatPrice(parts.amount)} ${safeText(parts.unit === 'Md' ? 'Md' : 'm')}`;
+  const period = rentalPeriodLabel(p);
+  return period ? `${price} / ${safeText(period)}` : price;
+}
+function rentalPeriodValue(p){
+  if(clean(p?.status).toLowerCase() !== 'rent') return '';
+  const period = clean(p?.rentPeriod || p?.rentalPeriod || p?.rental_period).toLowerCase();
+  return ['night','day','month','year'].includes(period) ? period : 'month';
+}
+function rentalPeriodLabel(p){
+  const period = rentalPeriodValue(p);
+  return period ? t(`rent.period.${period}.short`) : '';
 }
 function propertyPriceInDzd(p){ return compactPriceParts(p).dzd; }
 function statusLabel(status){ return status === 'rent' ? t('card.forRent') : status === 'new' ? t('card.new') : t('card.forSale'); }
@@ -756,7 +767,7 @@ function initPropertyDetail(){
   document.title = `${title} — Merade Immobilier`;
   const price = propertyPriceText(p);
   const details = [
-    [t('detail.type'), catLabel(p.category)], [t('detail.status'), statusTypeLabel(p)], [t('detail.virtualTour'), hasVirtualTour(p) ? t('detail.tourStart') : ''], [t('detail.wilaya'), wilayaDisplay(p.wilaya)], [t('detail.commune'), p.commune], [t('detail.address'), p.address], [t('detail.price'), price], [t('detail.surface'), p.surface && `${p.surface} ${t('card.surface')}`], [t('detail.land'), p.landSurface && `${p.landSurface} ${t('card.surface')}`], [t('detail.rooms'), p.rooms], [t('detail.bedrooms'), p.bedrooms], [t('detail.bathrooms'), p.bathrooms], [t('detail.floor'), p.floor], [t('detail.year'), p.yearBuilt], [t('detail.phone'), p.phone]
+    [t('detail.type'), catLabel(p.category)], [t('detail.status'), statusTypeLabel(p)], [t('detail.virtualTour'), hasVirtualTour(p) ? t('detail.tourStart') : ''], [t('detail.wilaya'), wilayaDisplay(p.wilaya)], [t('detail.commune'), p.commune], [t('detail.address'), p.address], [t('detail.price'), price], [t('detail.rentalPeriod'), rentalPeriodLabel(p)], [t('detail.surface'), p.surface && `${p.surface} ${t('card.surface')}`], [t('detail.land'), p.landSurface && `${p.landSurface} ${t('card.surface')}`], [t('detail.rooms'), p.rooms], [t('detail.bedrooms'), p.bedrooms], [t('detail.bathrooms'), p.bathrooms], [t('detail.floor'), p.floor], [t('detail.year'), p.yearBuilt], [t('detail.phone'), p.phone]
   ].filter(([,v])=>clean(v)).map(([k,v])=>`<div class="detail-item"><small>${safeText(k)}</small><strong>${safeText(v)}</strong></div>`).join('');
   const features = propertyFeatures(p).filter(Boolean).map(f=>`<li>${safeText(f)}</li>`).join('');
   const virtualTour = buildVirtualTourSection(p);
@@ -936,6 +947,15 @@ function bindTourBuilder(){
   $('[name="tourRooms"]')?.addEventListener('input',()=>{ syncTourNamesFromTextarea(); renderTourBuilder(); });
 }
 function setFormValue(form, name, value){ const el = form.elements[name]; if(!el) return; if(el.type === 'checkbox') el.checked = Boolean(value); else el.value = value ?? ''; }
+function syncAdminRentalPeriod(form){
+  if(!form) return;
+  const field = $('#rentalPeriodField');
+  const select = form.elements.rentalPeriod;
+  const isRental = clean(form.elements.status?.value).toLowerCase() === 'rent';
+  field?.classList.toggle('hidden', !isRental);
+  if(isRental && select && !select.value) select.value = 'month';
+  if(!isRental && select) select.value = '';
+}
 async function startEditProperty(id){
   let p = allProperties().find(x=>x.id === id); const form = $('#propertyForm'); if(!p || !form) return;
   if(window.MeradeDB?.enabled && window.MeradeDB?.getProperty){
@@ -949,6 +969,8 @@ async function startEditProperty(id){
   const priceParts = compactPriceParts(p);
   setFormValue(form, 'price', priceParts.amount);
   setFormValue(form, 'currency', priceParts.unit === 'm' ? 'm' : 'Md');
+  setFormValue(form, 'rentalPeriod', rentalPeriodValue(p));
+  syncAdminRentalPeriod(form);
   setFormValue(form, 'features', (p.features || []).join('\n'));
   setFormValue(form, 'featured', p.featured);
   setFormValue(form, 'heroFeatured', p.heroFeatured);
@@ -966,6 +988,7 @@ async function startEditProperty(id){
 function resetAdminForm(){
   const form = $('#propertyForm'); if(!form) return;
   form.reset(); form.elements.currency && (form.elements.currency.value = 'Md');
+  syncAdminRentalPeriod(form);
   ADMIN_EDITING_ID = ''; ADMIN_EXISTING_IMAGES = []; ADMIN_TOUR_ROOMS = []; ADMIN_HOTSPOT_ROOM_INDEX = 0; ADMIN_SELECTED_POINT = null; destroyAdminViewer();
   renderImageManager(); renderTourBuilder(); $('#hotspotEditor')?.classList.add('hidden');
   $('#publishTitle') && ($('#publishTitle').textContent = t('admin.title'));
@@ -974,6 +997,7 @@ function resetAdminForm(){
 }
 async function buildPropertyFromForm(form){
   const fd = new FormData(form);
+  const status = clean(fd.get('status')) || 'sale';
   const newImages = await filesToUrls(Array.from($('#images')?.files || []).slice(0,12), 'photos');
   const finalTourRooms = [];
   syncTourNamesFromTextarea();
@@ -986,11 +1010,12 @@ async function buildPropertyFromForm(form){
     id: ADMIN_EDITING_ID || `local-${Date.now()}`,
     title: clean(fd.get('title')) || 'Property',
     category: clean(fd.get('category')) || 'estates',
-    status: clean(fd.get('status')) || 'sale',
+    status,
     wilaya: clean(fd.get('wilaya')),
     commune: clean(fd.get('commune')),
     price: clean(fd.get('price')),
     currency: clean(fd.get('currency')) === 'm' ? 'm' : 'Md',
+    rentPeriod: status === 'rent' && ['night','day','month','year'].includes(clean(fd.get('rentalPeriod'))) ? clean(fd.get('rentalPeriod')) : '',
     surface: clean(fd.get('surface')),
     rooms: clean(fd.get('rooms')),
     bedrooms: clean(fd.get('bedrooms')),
@@ -1023,6 +1048,9 @@ async function saveLocalProperty(prop){
 async function initAdmin(){
   const loginScreen = $('#loginScreen'); const adminApp = $('#adminApp'); if(!loginScreen || !adminApp) return;
   ensureAdminHelpers(); bindTourBuilder(); renderImageManager(); renderTourBuilder();
+  const form = $('#propertyForm');
+  form?.elements.status?.addEventListener('change', () => syncAdminRentalPeriod(form));
+  syncAdminRentalPeriod(form);
   const unlock = () => { loginScreen.classList.add('hidden'); adminApp.classList.remove('hidden'); renderAdminList(); fillAdminStats(); initHeroSlider(); };
   const rememberedAdmin = localStorage.getItem(ADMIN_FLAG) === 'yes' || sessionStorage.getItem(ADMIN_FLAG) === 'yes';
   if(rememberedAdmin){
@@ -1060,7 +1088,6 @@ async function initAdmin(){
     location.reload();
   });
   $('#cancelEditBtn')?.addEventListener('click', resetAdminForm);
-  const form = $('#propertyForm');
   form?.addEventListener('submit', async e=>{
     e.preventDefault();
     const submitBtn = form.querySelector('button[type="submit"]');

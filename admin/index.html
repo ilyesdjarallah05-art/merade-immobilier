@@ -68,7 +68,7 @@
           <div style="height:18px"></div>
           <form class="admin-form" id="propertyForm">
             <div class="field"><label data-i18n="admin.propertyTitle">Title</label><input name="title" type="text" placeholder="Modern villa in Batna"></div>
-            <div class="field"><label data-i18n="search.status">Status</label><select name="status"><option value="sale" data-i18n="filter.sale">Sale</option><option value="rent" data-i18n="filter.rent">Rent</option><option value="new" data-i18n="filter.new">New project</option></select></div>
+            <div class="field"><label data-i18n="search.status">Status</label><select name="status" id="adminPropertyStatus"><option value="sale" data-i18n="filter.sale">Sale</option><option value="rent" data-i18n="filter.rent">Rent</option><option value="new" data-i18n="filter.new">New project</option></select></div>
             <div class="field"><label data-i18n="filter.category">Category</label><select name="category">
               <option value="estates" data-i18n="cat.estates">All properties</option>
               <option value="apartments" data-i18n="cat.apartments">Apartment</option>
@@ -95,6 +95,7 @@
             <div class="field"><label data-i18n="detail.address">Address</label><input name="address" type="text" placeholder="Short address"></div>
             <div class="field"><label data-i18n="detail.price">Price</label><input name="price" type="number" min="0" step="any" placeholder="9.5"></div>
             <div class="field"><label data-i18n="admin.priceUnit">Price unit</label><select name="currency"><option value="Md" data-i18n="admin.priceMd">Milliard (Md)</option><option value="m" data-i18n="admin.priceM">Million (m)</option></select></div>
+            <div class="field full hidden" id="rentalPeriodField"><label data-i18n="admin.rentalPeriod">Rental billing period</label><select name="rentalPeriod"><option value="night" data-i18n="rent.period.night">Per night</option><option value="day" data-i18n="rent.period.day">Per day</option><option value="month" data-i18n="rent.period.month" selected>Per month</option><option value="year" data-i18n="rent.period.year">Per year</option></select><p class="note" data-i18n="admin.rentalPeriodHelp">Shown next to the price on rental listings.</p></div>
             <div class="field"><label data-i18n="detail.surface">Built area</label><input name="surface" type="number" min="0" placeholder="220"></div>
             <div class="field"><label data-i18n="detail.land">Land area</label><input name="landSurface" type="number" min="0" placeholder="500"></div>
             <div class="field"><label data-i18n="detail.rooms">Rooms</label><input name="rooms" type="text" placeholder="5"></div>

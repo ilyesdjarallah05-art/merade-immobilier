@@ -147,6 +147,48 @@ Object.assign(I18N.ar, {
   'cat.touristComplex':'مجمع سياحي'
 });
 
+// Rental periods are fixed interface vocabulary. The listing title,
+// description and features continue to use automatic content translation.
+Object.assign(I18N.en, {
+  'admin.rentalPeriod':'Rental billing period',
+  'admin.rentalPeriodHelp':'Shown next to the price on rental listings.',
+  'detail.rentalPeriod':'Rental period',
+  'rent.period.night':'Per night',
+  'rent.period.day':'Per day',
+  'rent.period.month':'Per month',
+  'rent.period.year':'Per year',
+  'rent.period.night.short':'night',
+  'rent.period.day.short':'day',
+  'rent.period.month.short':'month',
+  'rent.period.year.short':'year'
+});
+Object.assign(I18N.fr, {
+  'admin.rentalPeriod':'Période de location',
+  'admin.rentalPeriodHelp':'Affichée à côté du prix sur les annonces de location.',
+  'detail.rentalPeriod':'Période de location',
+  'rent.period.night':'Par nuit',
+  'rent.period.day':'Par jour',
+  'rent.period.month':'Par mois',
+  'rent.period.year':'Par an',
+  'rent.period.night.short':'nuit',
+  'rent.period.day.short':'jour',
+  'rent.period.month.short':'mois',
+  'rent.period.year.short':'an'
+});
+Object.assign(I18N.ar, {
+  'admin.rentalPeriod':'مدة الإيجار',
+  'admin.rentalPeriodHelp':'تظهر بجانب السعر في إعلانات الإيجار.',
+  'detail.rentalPeriod':'مدة الإيجار',
+  'rent.period.night':'لكل ليلة',
+  'rent.period.day':'لكل يوم',
+  'rent.period.month':'لكل شهر',
+  'rent.period.year':'لكل سنة',
+  'rent.period.night.short':'ليلة',
+  'rent.period.day.short':'يوم',
+  'rent.period.month.short':'شهر',
+  'rent.period.year.short':'سنة'
+});
+
 function deviceLang(){
   const preferred = [...(navigator.languages || []), navigator.language].filter(Boolean);
   for(const value of preferred){

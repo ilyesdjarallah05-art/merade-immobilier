@@ -10,7 +10,7 @@ const MERADE_DEFAULT_PROPERTIES = [
   },
   {
     id: 'demo-apartment-alger', title: 'High standing apartment', category: 'apartments', status: 'rent', wilaya: '16 - Alger', commune: 'Hydra',
-    price: '12', currency: 'm', surface: '145', rooms: '4', bedrooms: '3', bathrooms: '2', floor: '5', landSurface: '', yearBuilt: '',
+    price: '12', currency: 'm', rentPeriod: 'month', surface: '145', rooms: '4', bedrooms: '3', bathrooms: '2', floor: '5', landSurface: '', yearBuilt: '',
     phone: '+213 555 000 000', address: 'Hydra, Alger', description: 'Bright apartment close to services, ideal for a family or professional tenant.',
     features: ['Elevator','Parking','Security','Balcony'], images: ['https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=1400&q=80'], featured: true, createdAt: '2026-06-24T11:00:00.000Z'
   },

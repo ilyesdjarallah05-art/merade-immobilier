@@ -60,7 +60,15 @@
         tourRooms:normalizeTextList(item.tourRooms)
       };
     });
+    const metaPeriod = normalizeRentPeriod(value?._meta?.rentPeriod, 'rent');
+    if(metaPeriod) result._meta = { rentPeriod: metaPeriod };
     return result;
+  }
+
+  function normalizeRentPeriod(value, status){
+    const period = clean(value).toLowerCase();
+    if(['night','day','month','year'].includes(period)) return period;
+    return clean(status).toLowerCase() === 'rent' ? 'month' : '';
   }
 
   const SESSION_KEY = 'meradeSupabaseSessionV1';
@@ -149,6 +157,7 @@
   }
   function toCamel(row){
     const rooms = normalizeRooms(row.virtual_tour_rooms);
+    const translations = normalizeTranslations(row.translations);
     return {
       id: row.id,
       title: row.title || 'Property',
@@ -159,6 +168,7 @@
       address: row.address || '',
       price: row.price ?? '',
       currency: row.currency || 'Md',
+      rentPeriod: normalizeRentPeriod(row.rental_period || translations?._meta?.rentPeriod, row.status),
       surface: row.surface ?? '',
       landSurface: row.land_surface ?? '',
       rooms: row.rooms || '',
@@ -168,7 +178,7 @@
       yearBuilt: row.year_built || '',
       phone: row.phone || '',
       description: row.description || '',
-      translations: normalizeTranslations(row.translations),
+      translations,
       features: normalizeTextList(row.features),
       images: normalizeMediaList([row.images, row.image, row.main_image, row.cover_image, row.photo, row.photos, row.gallery]),
       featured: Boolean(row.featured),
@@ -187,6 +197,10 @@
   function toDb(prop){
     const tourRooms = normalizeRooms(prop.virtualTourRooms);
     const tourUrl = clean(prop.virtualTourUrl);
+    const rentPeriod = normalizeRentPeriod(prop.rentPeriod, prop.status);
+    const translations = normalizeTranslations(prop.translations);
+    if(rentPeriod) translations._meta = { rentPeriod };
+    else delete translations._meta;
     return {
       title: prop.title || null,
       category: prop.category || null,
@@ -196,6 +210,7 @@
       address: prop.address || null,
       price: numberOrNull(prop.price),
       currency: prop.currency === 'm' ? 'm' : 'Md',
+      rental_period: rentPeriod || null,
       surface: numberOrNull(prop.surface),
       land_surface: numberOrNull(prop.landSurface),
       rooms: prop.rooms || null,
@@ -205,7 +220,7 @@
       year_built: prop.yearBuilt || null,
       phone: prop.phone || null,
       description: prop.description || null,
-      translations: normalizeTranslations(prop.translations),
+      translations,
       features: normalizeTextList(prop.features),
       images: normalizeMediaList(prop.images),
       featured: Boolean(prop.featured),
@@ -286,47 +301,79 @@
     return parsed.data;
   }
   const SUMMARY_SELECT = [
-    'id','title','category','status','wilaya','commune','address','price','currency',
+    'id','title','category','status','wilaya','commune','address','price','currency','rental_period',
     'surface','land_surface','rooms','bedrooms','bathrooms','floor','year_built','phone',
     'description','translations','features','images','featured','hero_featured','hero_order','is_published','has_virtual_tour',
     'virtual_tour_type','virtual_tour_url','virtual_tour_rooms','created_at'
   ].join(',');
-  const LEGACY_SUMMARY_SELECT = SUMMARY_SELECT.split(',').filter(column => column !== 'translations').join(',');
-  function translationsColumnMissing(err){ return /translations|schema cache|column/i.test(clean(err?.message)); }
   let translationsColumnAvailable = null;
-  function withoutTranslations(payload){
-    const legacyPayload = { ...payload };
-    delete legacyPayload.translations;
-    return legacyPayload;
+  let rentalPeriodColumnAvailable = null;
+  function optionalColumnMissing(err, column){
+    const message = clean(err?.message).toLowerCase();
+    return message.includes(column.toLowerCase()) && /(schema cache|column|does not exist)/i.test(message);
+  }
+  function learnMissingOptionalColumn(err){
+    if(optionalColumnMissing(err, 'translations')){ translationsColumnAvailable = false; return true; }
+    if(optionalColumnMissing(err, 'rental_period')){ rentalPeriodColumnAvailable = false; return true; }
+    return false;
+  }
+  function compatibleSummarySelect(){
+    return SUMMARY_SELECT.split(',').filter(column => {
+      if(column === 'translations' && translationsColumnAvailable === false) return false;
+      if(column === 'rental_period' && rentalPeriodColumnAvailable === false) return false;
+      return true;
+    }).join(',');
+  }
+  function compatiblePropertyPayload(payload){
+    const compatible = { ...payload };
+    if(translationsColumnAvailable === false) delete compatible.translations;
+    if(rentalPeriodColumnAvailable === false) delete compatible.rental_period;
+    return compatible;
+  }
+  async function fetchPropertySummaries(querySuffix){
+    let lastError;
+    for(let attempt=0; attempt<3; attempt += 1){
+      const selected = compatibleSummarySelect();
+      try{
+        const rows = await request(`properties?select=${selected}${querySuffix}`);
+        if(selected.includes('translations')) translationsColumnAvailable = true;
+        if(selected.includes('rental_period')) rentalPeriodColumnAvailable = true;
+        return rows;
+      }catch(err){
+        lastError = err;
+        if(!learnMissingOptionalColumn(err)) throw err;
+      }
+    }
+    throw lastError;
+  }
+  async function writeProperty(path, method, payload){
+    let lastError;
+    for(let attempt=0; attempt<3; attempt += 1){
+      const compatible = compatiblePropertyPayload(payload);
+      try{
+        const rows = await request(path, { requireAuth: true, method, headers: { Prefer: 'return=representation' }, body: JSON.stringify(compatible) });
+        return {
+          rows,
+          omittedTranslations: !Object.prototype.hasOwnProperty.call(compatible, 'translations'),
+          omittedRentalPeriod: !Object.prototype.hasOwnProperty.call(compatible, 'rental_period')
+        };
+      }catch(err){
+        lastError = err;
+        if(!learnMissingOptionalColumn(err)) throw err;
+      }
+    }
+    throw lastError;
   }
 
   async function listProperties(options={}){
     const limit = Math.min(1000, Math.max(1, Number(options.limit || 1000)));
     const publishedFilter = options.published === false ? '' : '&or=(is_published.eq.true,is_published.is.null)';
-    let rows;
-    try{
-      rows = await request(`properties?select=${SUMMARY_SELECT}${publishedFilter}&order=created_at.desc&limit=${limit}`);
-      translationsColumnAvailable = true;
-    }
-    catch(err){
-      if(!translationsColumnMissing(err)) throw err;
-      translationsColumnAvailable = false;
-      rows = await request(`properties?select=${LEGACY_SUMMARY_SELECT}${publishedFilter}&order=created_at.desc&limit=${limit}`);
-    }
+    const rows = await fetchPropertySummaries(`${publishedFilter}&order=created_at.desc&limit=${limit}`);
     return (rows || []).map(toCamel);
   }
   async function listAdminProperties(){
     try{
-      let rows;
-      try{
-        rows = await request(`properties?select=${SUMMARY_SELECT}&order=created_at.desc&limit=1000`);
-        translationsColumnAvailable = true;
-      }
-      catch(err){
-        if(!translationsColumnMissing(err)) throw err;
-        translationsColumnAvailable = false;
-        rows = await request(`properties?select=${LEGACY_SUMMARY_SELECT}&order=created_at.desc&limit=1000`);
-      }
+      const rows = await fetchPropertySummaries('&order=created_at.desc&limit=1000');
       return (rows || []).map(toCamel);
     }catch(err){
       console.warn('Admin full property list failed, falling back to public list:', err);
@@ -340,48 +387,18 @@
   }
   async function insertProperty(prop){
     const payload = toDb(prop);
-    let rows;
-    let usedLegacySchema = false;
-    if(translationsColumnAvailable === false){
-      usedLegacySchema = true;
-      rows = await request('properties', { requireAuth: true, method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify(withoutTranslations(payload)) });
-    }else{
-      try{
-        rows = await request('properties', { requireAuth: true, method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify(payload) });
-        translationsColumnAvailable = true;
-      }catch(err){
-        if(!translationsColumnMissing(err)) throw err;
-        translationsColumnAvailable = false;
-        usedLegacySchema = true;
-        console.warn('Supabase properties.translations is missing; publishing with the legacy schema.', err);
-        rows = await request('properties', { requireAuth: true, method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify(withoutTranslations(payload)) });
-      }
-    }
-    const saved = rows?.[0] ? toCamel(rows[0]) : prop;
-    if(usedLegacySchema) saved.translations = normalizeTranslations(prop.translations);
+    const result = await writeProperty('properties', 'POST', payload);
+    const saved = result.rows?.[0] ? toCamel(result.rows[0]) : prop;
+    if(result.omittedTranslations) saved.translations = normalizeTranslations(prop.translations);
+    if(result.omittedRentalPeriod) saved.rentPeriod = normalizeRentPeriod(prop.rentPeriod, prop.status);
     return saved;
   }
   async function updateProperty(id, prop){
     const payload = toDb(prop);
-    let rows;
-    let usedLegacySchema = false;
-    if(translationsColumnAvailable === false){
-      usedLegacySchema = true;
-      rows = await request(`properties?id=eq.${encodeURIComponent(id)}`, { requireAuth: true, method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify(withoutTranslations(payload)) });
-    }else{
-      try{
-        rows = await request(`properties?id=eq.${encodeURIComponent(id)}`, { requireAuth: true, method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify(payload) });
-        translationsColumnAvailable = true;
-      }catch(err){
-        if(!translationsColumnMissing(err)) throw err;
-        translationsColumnAvailable = false;
-        usedLegacySchema = true;
-        console.warn('Supabase properties.translations is missing; updating with the legacy schema.', err);
-        rows = await request(`properties?id=eq.${encodeURIComponent(id)}`, { requireAuth: true, method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify(withoutTranslations(payload)) });
-      }
-    }
-    const saved = rows?.[0] ? toCamel(rows[0]) : { ...prop, id };
-    if(usedLegacySchema) saved.translations = normalizeTranslations(prop.translations);
+    const result = await writeProperty(`properties?id=eq.${encodeURIComponent(id)}`, 'PATCH', payload);
+    const saved = result.rows?.[0] ? toCamel(result.rows[0]) : { ...prop, id };
+    if(result.omittedTranslations) saved.translations = normalizeTranslations(prop.translations);
+    if(result.omittedRentalPeriod) saved.rentPeriod = normalizeRentPeriod(prop.rentPeriod, prop.status);
     return saved;
   }
   async function deleteProperty(id){

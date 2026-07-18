@@ -14,6 +14,7 @@ create table if not exists public.properties (
   address text,
   price numeric,
   currency text default 'Md',
+  rental_period text,
   surface numeric,
   land_surface numeric,
   rooms text,
@@ -41,7 +42,21 @@ alter table public.properties add column if not exists virtual_tour_rooms jsonb 
 alter table public.properties add column if not exists hero_featured boolean default false;
 alter table public.properties add column if not exists hero_order integer;
 alter table public.properties add column if not exists translations jsonb default '{}'::jsonb;
+alter table public.properties add column if not exists rental_period text;
 alter table public.properties alter column currency set default 'Md';
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'properties_rental_period_check'
+      and conrelid = 'public.properties'::regclass
+  ) then
+    alter table public.properties
+      add constraint properties_rental_period_check
+      check (rental_period is null or rental_period in ('night','day','month','year'));
+  end if;
+end $$;
 
 create table if not exists public.admin_users (
   user_id uuid primary key references auth.users(id) on delete cascade,
@@ -154,3 +169,8 @@ select * from (values
 ('Constructible land','land','sale','31 - Oran','Bir El Djir','Bir El Djir, Oran',3.8::numeric,'Md',null,520::numeric,null,null,null,null,null,'+213 555 000 000','Well-positioned land near the main road. Suitable for a residential project.',array['Legal papers available','Residential zone','Road access'],array['https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1400&q=80'],true,true,4,false,'pannellum','[]'::jsonb)
 ) as v(title, category, status, wilaya, commune, address, price, currency, surface, land_surface, rooms, bedrooms, bathrooms, floor, year_built, phone, description, features, images, featured, hero_featured, hero_order, has_virtual_tour, virtual_tour_type, virtual_tour_rooms)
 where not exists (select 1 from public.properties);
+
+-- Existing rental listings use monthly billing until an admin chooses another period.
+update public.properties
+set rental_period = 'month'
+where status = 'rent' and rental_period is null;
