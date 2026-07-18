@@ -1240,7 +1240,7 @@ html[lang="ar"] .home-page .home-bottom-card .title{
 /* v24 — luxury hover treatment for Must-See property cards */
 .home-page .must-see-section .property-card{
   position:relative;
-  transform-style:preserve-3d;
+  transform-style:flat;
   will-change:transform,box-shadow;
   transition:transform .58s cubic-bezier(.2,.75,.2,1),box-shadow .58s ease,border-color .4s ease!important
 }
@@ -1270,12 +1270,13 @@ html[lang="ar"] .home-page .home-bottom-card .title{
   transition:opacity .45s ease,box-shadow .45s ease
 }
 .home-page .must-see-section .property-card .prop-media{
-  isolation:isolate;
-  transition:filter .55s ease
+  isolation:isolate
 }
 .home-page .must-see-section .property-card .prop-media img{
   transform:scale(1.015);
-  transition:transform .85s cubic-bezier(.2,.75,.2,1),filter .55s ease!important
+  filter:none!important;
+  backface-visibility:hidden;
+  transition:transform .75s cubic-bezier(.2,.75,.2,1)!important
 }
 .home-page .must-see-section .property-card .prop-media::after{
   background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(0,0,0,.16))!important;
@@ -1295,7 +1296,7 @@ html[lang="ar"] .home-page .home-bottom-card .title{
 @media(hover:hover) and (pointer:fine){
   .home-page .must-see-section .property-card:hover,
   .home-page .must-see-section .property-card:focus-within{
-    transform:perspective(1100px) translateY(-13px) scale(1.012)!important;
+    transform:translateY(-13px)!important;
     border-color:rgba(30,30,32,.3)!important;
     box-shadow:0 38px 80px rgba(0,0,0,.2),0 12px 28px rgba(0,0,0,.1),0 0 0 1px rgba(255,255,255,.65)!important
   }
@@ -1311,8 +1312,8 @@ html[lang="ar"] .home-page .home-bottom-card .title{
   }
   .home-page .must-see-section .property-card:hover .prop-media img,
   .home-page .must-see-section .property-card:focus-within .prop-media img{
-    transform:scale(1.085);
-    filter:saturate(1.06) contrast(1.05) brightness(1.03)
+    transform:scale(1.06);
+    filter:none!important
   }
   .home-page .must-see-section .property-card:hover .prop-media::after,
   .home-page .must-see-section .property-card:focus-within .prop-media::after{
