@@ -31,6 +31,10 @@ const EXTRA_TRANSLATIONS = {
 };
 
 Object.assign(EXTRA_TRANSLATIONS.en, {
+  'hero.intent.label':'Property actions',
+  'hero.intent.buy':'Buy',
+  'hero.intent.sell':'Sell',
+  'hero.intent.rent':'Rent',
   'section.mustSee.categoriesLabel':'Must-see property categories',
   'home.cities.kicker':'Popular cities',
   'home.cities.title':'Find properties in these cities',
@@ -46,6 +50,10 @@ Object.assign(EXTRA_TRANSLATIONS.en, {
   'home.why.personal.sub':'Simple tools, useful filters and direct contact for faster decisions.'
 });
 Object.assign(EXTRA_TRANSLATIONS.fr, {
+  'hero.intent.label':'Actions immobilières',
+  'hero.intent.buy':'Acheter',
+  'hero.intent.sell':'Vendre',
+  'hero.intent.rent':'Louer',
   'section.mustSee.categoriesLabel':'Catégories des biens incontournables',
   'home.cities.kicker':'Villes populaires',
   'home.cities.title':'Trouvez des propriétés dans ces villes',
@@ -61,6 +69,10 @@ Object.assign(EXTRA_TRANSLATIONS.fr, {
   'home.why.personal.sub':'Des outils simples, des filtres utiles et un contact direct pour décider plus vite.'
 });
 Object.assign(EXTRA_TRANSLATIONS.ar, {
+  'hero.intent.label':'خدمات العقار',
+  'hero.intent.buy':'شراء',
+  'hero.intent.sell':'بيع',
+  'hero.intent.rent':'كراء',
   'section.mustSee.categoriesLabel':'فئات العقارات التي لا تفوّت',
   'home.cities.kicker':'مدن رائجة',
   'home.cities.title':'اعثر على عقارات في هذه المدن',
@@ -658,6 +670,11 @@ function buildHeroSlide(p, index){
         <p class="hero-place">${cardIcon('pin')}<span>${propertyLocation(p)}</span></p>
         ${price ? `<p class="hero-price">${price}</p>` : ''}
       </a>
+      <nav class="hero-intent-actions" aria-label="${safeText(extraText('hero.intent.label'))}">
+        <a class="hero-intent-btn hero-intent-buy" href="${ROOT}pages/estates.html?status=sale">${safeText(extraText('hero.intent.buy'))}</a>
+        <a class="hero-intent-btn hero-intent-sell" href="${ROOT}pages/contact.html?subject=sell">${safeText(extraText('hero.intent.sell'))}</a>
+        <a class="hero-intent-btn hero-intent-rent" href="${ROOT}pages/estates.html?status=rent">${safeText(extraText('hero.intent.rent'))}</a>
+      </nav>
     </div>
   </article>`;
 }
@@ -693,6 +710,102 @@ function initHeroSlider(){
     }
   }
 }
+function clampUnit(value){
+  return Math.max(0, Math.min(1, value));
+}
+function initHeroScrollScene(){
+  const hero = $('#homeHero');
+  if(!hero || hero.dataset.scrollSceneReady === 'true') return;
+  hero.dataset.scrollSceneReady = 'true';
+  hero.classList.add('hero-scroll-scene');
+
+  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  let frame = 0;
+  const render = () => {
+    frame = 0;
+    if(reducedMotion){
+      hero.style.setProperty('--hero-copy-opacity', '1');
+      hero.style.setProperty('--hero-copy-shift', '0px');
+      hero.style.setProperty('--hero-controls-opacity', '1');
+      hero.style.setProperty('--hero-search-opacity', '1');
+      return;
+    }
+    const bounds = hero.getBoundingClientRect();
+    const range = Math.max(1, hero.offsetHeight - window.innerHeight);
+    const progress = clampUnit(-bounds.top / range);
+    const copyOpacity = 1 - clampUnit(progress / .34);
+    const controlsOpacity = 1 - clampUnit(progress / .26);
+    const searchOpacity = 1 - clampUnit((progress - .52) / .30);
+    hero.style.setProperty('--hero-copy-opacity', copyOpacity.toFixed(3));
+    hero.style.setProperty('--hero-copy-shift', `${Math.round(progress * -44)}px`);
+    hero.style.setProperty('--hero-controls-opacity', controlsOpacity.toFixed(3));
+    hero.style.setProperty('--hero-search-opacity', searchOpacity.toFixed(3));
+    hero.classList.toggle('hero-search-hidden', searchOpacity < .05);
+  };
+  const requestRender = () => {
+    if(!frame) frame = requestAnimationFrame(render);
+  };
+  window.addEventListener('scroll', requestRender, { passive:true });
+  window.addEventListener('resize', requestRender, { passive:true });
+  render();
+}
+function initScrollInkTitles(){
+  const selector = [
+    '.must-see-section .title',
+    '.home-latest-section .title',
+    '.home-handpicked-section .title',
+    '.home-about-modern-section .title',
+    'main > .section:not(.home-bottom-cta) > .container > .title',
+    '.home-cities-section .title',
+    '.home-why-section .title'
+  ].join(',');
+  const targets = $$(selector).filter((target, index, all) => all.indexOf(target) === index && !target.dataset.inkReady);
+  if(!targets.length) return;
+  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const entries = targets.map(target => {
+    target.dataset.inkReady = 'true';
+    const textNodes = [];
+    const walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT, {
+      acceptNode(node){
+        return clean(node.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+      }
+    });
+    while(walker.nextNode()) textNodes.push(walker.currentNode);
+    textNodes.forEach(node => {
+      const fragment = document.createDocumentFragment();
+      node.nodeValue.split(/(\s+)/).forEach(part => {
+        if(!part) return;
+        if(/^\s+$/.test(part)) fragment.appendChild(document.createTextNode(part));
+        else {
+          const word = document.createElement('span');
+          word.className = 'scroll-ink-word';
+          word.textContent = part;
+          fragment.appendChild(word);
+        }
+      });
+      node.replaceWith(fragment);
+    });
+    target.classList.add('scroll-ink-title');
+    return { target, words: $$('.scroll-ink-word', target) };
+  });
+
+  let frame = 0;
+  const render = () => {
+    frame = 0;
+    entries.forEach(({ target, words }) => {
+      const bounds = target.getBoundingClientRect();
+      const progress = reducedMotion ? 1 : clampUnit((window.innerHeight * .88 - bounds.top) / (window.innerHeight * .48));
+      const activeWords = Math.ceil(progress * words.length);
+      words.forEach((word, index) => word.classList.toggle('inked', index < activeWords));
+    });
+  };
+  const requestRender = () => {
+    if(!frame) frame = requestAnimationFrame(render);
+  };
+  window.addEventListener('scroll', requestRender, { passive:true });
+  window.addEventListener('resize', requestRender, { passive:true });
+  render();
+}
 function initListings(){
   const grid = $('#listingsGrid'); if(!grid) return;
   const fixedCategory = grid.dataset.category || '';
@@ -700,6 +813,15 @@ function initListings(){
   const featuredOnly = grid.dataset.featured === 'true';
   const featuredPriority = grid.dataset.featured === 'priority';
   const categoryTabs = $$('[data-must-see-category]');
+  const categoryTabList = categoryTabs[0]?.closest('.must-see-category-tabs');
+  const moveCategoryIndicator = tab => {
+    if(!categoryTabList || !tab) return;
+    const listBounds = categoryTabList.getBoundingClientRect();
+    const tabBounds = tab.getBoundingClientRect();
+    categoryTabList.style.setProperty('--category-indicator-x', `${tabBounds.left - listBounds.left}px`);
+    categoryTabList.style.setProperty('--category-indicator-width', `${tabBounds.width}px`);
+    categoryTabList.classList.add('indicator-ready');
+  };
   const activeMustSeeCategory = () => categoryTabs.find(tab => tab.classList.contains('active'))?.dataset.mustSeeCategory || '';
   const apply = () => {
     const q = clean($('#searchText')?.value).toLowerCase();
@@ -724,6 +846,7 @@ function initListings(){
     categoryTabs.forEach((tab,index) => {
       tab.addEventListener('click',()=>{
         categoryTabs.forEach(item => { const active = item === tab; item.classList.toggle('active', active); item.setAttribute('aria-selected', String(active)); });
+        moveCategoryIndicator(tab);
         apply();
       });
       tab.addEventListener('keydown',event=>{
@@ -734,8 +857,10 @@ function initListings(){
         next.focus(); next.click();
       });
     });
+    window.addEventListener('resize', () => moveCategoryIndicator(categoryTabs.find(tab => tab.classList.contains('active'))), { passive:true });
     grid.dataset.filtersBound = 'yes';
   }
+  requestAnimationFrame(() => moveCategoryIndicator(categoryTabs.find(tab => tab.classList.contains('active'))));
   apply();
 }
 function initSearchBox(){
@@ -1964,6 +2089,8 @@ async function init(){
     // This prevents the homepage hero from first showing a partial/fallback set
     // and then jumping to the full 8 slides a moment later.
     initHeroSlider();
+    initHeroScrollScene();
+    initScrollInkTitles();
     initListings();
     initHomeCities();
     initHomePropertyShowcases();
