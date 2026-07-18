@@ -1020,13 +1020,21 @@ async function saveLocalProperty(prop){
   else { if(defaultProperties().some(p=>p.id === prop.id)) setHiddenDefaultIds([...hiddenDefaultIds(), prop.id]); saved.unshift(prop); }
   setSavedProperties(saved);
 }
-function initAdmin(){
+async function initAdmin(){
   const loginScreen = $('#loginScreen'); const adminApp = $('#adminApp'); if(!loginScreen || !adminApp) return;
   ensureAdminHelpers(); bindTourBuilder(); renderImageManager(); renderTourBuilder();
   const unlock = () => { loginScreen.classList.add('hidden'); adminApp.classList.remove('hidden'); renderAdminList(); fillAdminStats(); initHeroSlider(); };
-  if(sessionStorage.getItem(ADMIN_FLAG) === 'yes'){
-    if(!window.MeradeDB?.enabled || window.MeradeDB?.isSignedIn?.()) unlock();
-    else sessionStorage.removeItem(ADMIN_FLAG);
+  const rememberedAdmin = localStorage.getItem(ADMIN_FLAG) === 'yes' || sessionStorage.getItem(ADMIN_FLAG) === 'yes';
+  if(rememberedAdmin){
+    const sessionRestored = !window.MeradeDB?.enabled || await window.MeradeDB.restoreSession?.();
+    if(sessionRestored){
+      localStorage.setItem(ADMIN_FLAG, 'yes');
+      sessionStorage.removeItem(ADMIN_FLAG);
+      unlock();
+    }else{
+      localStorage.removeItem(ADMIN_FLAG);
+      sessionStorage.removeItem(ADMIN_FLAG);
+    }
   }
   $('#loginForm')?.addEventListener('submit', async e=>{
     e.preventDefault();
@@ -1041,9 +1049,16 @@ function initAdmin(){
       DB_STATUS = 'local';
       REMOTE_PROPERTIES = null;
     }
-    sessionStorage.setItem(ADMIN_FLAG,'yes'); unlock();
+    localStorage.setItem(ADMIN_FLAG,'yes');
+    sessionStorage.removeItem(ADMIN_FLAG);
+    unlock();
   });
-  $('#logoutBtn')?.addEventListener('click',async ()=>{ sessionStorage.removeItem(ADMIN_FLAG); await window.MeradeDB?.signOut?.(); location.reload(); });
+  $('#logoutBtn')?.addEventListener('click',async ()=>{
+    localStorage.removeItem(ADMIN_FLAG);
+    sessionStorage.removeItem(ADMIN_FLAG);
+    await window.MeradeDB?.signOut?.();
+    location.reload();
+  });
   $('#cancelEditBtn')?.addEventListener('click', resetAdminForm);
   const form = $('#propertyForm');
   form?.addEventListener('submit', async e=>{
@@ -1803,7 +1818,7 @@ async function init(){
     initHomePropertyShowcases();
     initPropertyAI();
     initPropertyDetail();
-    initAdmin();
+    await initAdmin();
     if($('#adminList')){ renderAdminList(); fillAdminStats(); }
   } finally {
     hidePageLoader();

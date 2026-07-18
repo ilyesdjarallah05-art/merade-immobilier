@@ -64,7 +64,23 @@
   }
 
   const SESSION_KEY = 'meradeSupabaseSessionV1';
-  function getSession(){ try { return JSON.parse(sessionStorage.getItem(SESSION_KEY)) || null; } catch { return null; } }
+  function readStoredSession(storage){
+    try { return JSON.parse(storage.getItem(SESSION_KEY)) || null; }
+    catch { storage.removeItem(SESSION_KEY); return null; }
+  }
+  function getSession(){
+    const persistentSession = readStoredSession(localStorage);
+    if(persistentSession) return persistentSession;
+
+    // Preserve an already-open admin login made before sessions became
+    // persistent, then move it to localStorage for future browser restarts.
+    const legacySession = readStoredSession(sessionStorage);
+    if(legacySession){
+      localStorage.setItem(SESSION_KEY, JSON.stringify(legacySession));
+      sessionStorage.removeItem(SESSION_KEY);
+    }
+    return legacySession;
+  }
   function sessionExpiresAt(session){ return Number(session?.expires_at || 0); }
   function sessionIsExpired(session, skewSeconds=60){
     const exp = sessionExpiresAt(session);
@@ -78,9 +94,13 @@
       next.expires_at = Math.floor(Date.now() / 1000) + Number(session.expires_in);
     }
     if(!next.refresh_token && previous.refresh_token) next.refresh_token = previous.refresh_token;
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(next));
+    localStorage.setItem(SESSION_KEY, JSON.stringify(next));
+    sessionStorage.removeItem(SESSION_KEY);
   }
-  function clearSession(){ sessionStorage.removeItem(SESSION_KEY); }
+  function clearSession(){
+    localStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(SESSION_KEY);
+  }
   async function refreshSession(){
     const current = getSession();
     if(!current?.refresh_token){ clearSession(); return false; }
@@ -217,6 +237,12 @@
   function isSignedIn(){
     const session = getSession();
     return Boolean(session?.access_token && (!sessionIsExpired(session) || session.refresh_token));
+  }
+  async function restoreSession(){
+    const session = getSession();
+    if(!session?.access_token) return false;
+    if(sessionIsExpired(session)) return await refreshSession();
+    return true;
   }
 
   async function readResponse(res){
@@ -393,5 +419,5 @@
     return out;
   }
 
-  window.MeradeDB = { enabled, baseUrl, bucket, keyLooksWrong, listProperties, listAdminProperties, getProperty, insertProperty, updateProperty, deleteProperty, signIn, signOut, isSignedIn, refreshSession, uploadFile, uploadFiles, publicStorageUrl };
+  window.MeradeDB = { enabled, baseUrl, bucket, keyLooksWrong, listProperties, listAdminProperties, getProperty, insertProperty, updateProperty, deleteProperty, signIn, signOut, isSignedIn, restoreSession, refreshSession, uploadFile, uploadFiles, publicStorageUrl };
 })();
