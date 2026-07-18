@@ -31,6 +31,7 @@ const EXTRA_TRANSLATIONS = {
 };
 
 Object.assign(EXTRA_TRANSLATIONS.en, {
+  'section.mustSee.categoriesLabel':'Must-see property categories',
   'home.cities.kicker':'Popular cities',
   'home.cities.title':'Find properties in these cities',
   'home.cities.sub':'Explore properties in the main locations we serve. Choose a city and start browsing.',
@@ -45,6 +46,7 @@ Object.assign(EXTRA_TRANSLATIONS.en, {
   'home.why.personal.sub':'Simple tools, useful filters and direct contact for faster decisions.'
 });
 Object.assign(EXTRA_TRANSLATIONS.fr, {
+  'section.mustSee.categoriesLabel':'Catégories des biens incontournables',
   'home.cities.kicker':'Villes populaires',
   'home.cities.title':'Trouvez des propriétés dans ces villes',
   'home.cities.sub':'Découvrez des biens immobiliers dans les principales localités que nous desservons. Choisissez votre ville et commencez votre exploration.',
@@ -59,6 +61,7 @@ Object.assign(EXTRA_TRANSLATIONS.fr, {
   'home.why.personal.sub':'Des outils simples, des filtres utiles et un contact direct pour décider plus vite.'
 });
 Object.assign(EXTRA_TRANSLATIONS.ar, {
+  'section.mustSee.categoriesLabel':'فئات العقارات التي لا تفوّت',
   'home.cities.kicker':'مدن رائجة',
   'home.cities.title':'اعثر على عقارات في هذه المدن',
   'home.cities.sub':'اكتشف عقارات في أهم المناطق التي نخدمها. اختر المدينة وابدأ التصفح.',
@@ -160,6 +163,7 @@ function extraText(key){
 function applyExtraTranslations(){
   $$('[data-home-i18n]').forEach(el => { el.textContent = extraText(el.dataset.homeI18n); });
   $$('[data-home-i18n-placeholder]').forEach(el => { el.setAttribute('placeholder', extraText(el.dataset.homeI18nPlaceholder)); });
+  $$('[data-home-i18n-aria-label]').forEach(el => { el.setAttribute('aria-label', extraText(el.dataset.homeI18nAriaLabel)); });
 }
 function bindExtraTranslationRefresh(){
   $$('.language-select').forEach(sel => {
@@ -694,10 +698,13 @@ function initListings(){
   const fixedCategory = grid.dataset.category || '';
   const limit = Number(grid.dataset.limit || 0);
   const featuredOnly = grid.dataset.featured === 'true';
+  const featuredPriority = grid.dataset.featured === 'priority';
+  const categoryTabs = $$('[data-must-see-category]');
+  const activeMustSeeCategory = () => categoryTabs.find(tab => tab.classList.contains('active'))?.dataset.mustSeeCategory || '';
   const apply = () => {
     const q = clean($('#searchText')?.value).toLowerCase();
     const status = $('#filterStatus')?.value || '';
-    const cat = fixedCategory || ($('#filterCategory')?.value || new URL(location.href).searchParams.get('category') || '');
+    const cat = fixedCategory || activeMustSeeCategory() || ($('#filterCategory')?.value || new URL(location.href).searchParams.get('category') || '');
     const wilaya = $('#filterWilaya')?.value || '';
     const commune = $('#filterCommune')?.value || '';
     const maxPrice = Number(new URL(location.href).searchParams.get('maxPrice') || 0);
@@ -707,12 +714,26 @@ function initListings(){
       const priceOk = !maxPrice || (!Number.isNaN(priceValue) && priceValue <= maxPrice);
       return (!q || hay.includes(q)) && (!status || p.status === status) && (!cat || p.category === cat) && (!wilaya || p.wilaya === wilaya) && (!commune || p.commune === commune) && priceOk && (!featuredOnly || p.featured);
     });
+    if(featuredPriority) items.sort((a,b) => Number(Boolean(b.featured)) - Number(Boolean(a.featured)) || new Date(b.createdAt || b.created_at || 0) - new Date(a.createdAt || a.created_at || 0));
     if(limit) items = items.slice(0, limit);
     renderCards(grid, items);
   };
   if(!grid.dataset.filtersBound){
     ['input','change'].forEach(ev=>$$('[data-filter]').forEach(el=>el.addEventListener(ev, apply)));
     $$('#quickChips .chip').forEach(chip=>chip.addEventListener('click',()=>{ $$('#quickChips .chip').forEach(c=>c.classList.remove('active')); chip.classList.add('active'); const target = chip.dataset.status || ''; const statusInput = $('#filterStatus'); if(statusInput) statusInput.value = target; apply(); }));
+    categoryTabs.forEach((tab,index) => {
+      tab.addEventListener('click',()=>{
+        categoryTabs.forEach(item => { const active = item === tab; item.classList.toggle('active', active); item.setAttribute('aria-selected', String(active)); });
+        apply();
+      });
+      tab.addEventListener('keydown',event=>{
+        if(!['ArrowLeft','ArrowRight'].includes(event.key)) return;
+        event.preventDefault();
+        const direction = event.key === 'ArrowRight' ? 1 : -1;
+        const next = categoryTabs[(index + direction + categoryTabs.length) % categoryTabs.length];
+        next.focus(); next.click();
+      });
+    });
     grid.dataset.filtersBound = 'yes';
   }
   apply();
