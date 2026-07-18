@@ -45,6 +45,9 @@
     if(raw.startsWith('[')){ try { return normalizeTextList(JSON.parse(raw)); } catch {} }
     return raw.split(/\n|,/).map(clean).filter(Boolean);
   }
+  function normalizeFeatureKeys(value){
+    return Array.from(new Set(normalizeTextList(value).map(clean).filter(key => /^[a-z][a-zA-Z0-9]{1,40}$/.test(key)))).slice(0,40);
+  }
   function normalizeTranslations(value){
     if(!value) return {};
     if(typeof value === 'string'){ try { return normalizeTranslations(JSON.parse(value)); } catch { return {}; } }
@@ -60,8 +63,9 @@
         tourRooms:normalizeTextList(item.tourRooms)
       };
     });
-    const metaPeriod = normalizeRentPeriod(value?._meta?.rentPeriod, 'rent');
-    if(metaPeriod) result._meta = { rentPeriod: metaPeriod };
+    const metaPeriod = normalizeRentPeriod(value?._meta?.rentPeriod, '');
+    const featureKeys = normalizeFeatureKeys(value?._meta?.featureKeys);
+    if(metaPeriod || featureKeys.length) result._meta = { ...(metaPeriod ? {rentPeriod:metaPeriod} : {}), ...(featureKeys.length ? {featureKeys} : {}) };
     return result;
   }
 
@@ -179,6 +183,7 @@
       phone: row.phone || '',
       description: row.description || '',
       translations,
+      featureKeys: normalizeFeatureKeys(translations?._meta?.featureKeys),
       features: normalizeTextList(row.features),
       images: normalizeMediaList([row.images, row.image, row.main_image, row.cover_image, row.photo, row.photos, row.gallery]),
       featured: Boolean(row.featured),
@@ -199,7 +204,8 @@
     const tourUrl = clean(prop.virtualTourUrl);
     const rentPeriod = normalizeRentPeriod(prop.rentPeriod, prop.status);
     const translations = normalizeTranslations(prop.translations);
-    if(rentPeriod) translations._meta = { rentPeriod };
+    const featureKeys = normalizeFeatureKeys(prop.featureKeys || translations?._meta?.featureKeys);
+    if(rentPeriod || featureKeys.length) translations._meta = { ...(rentPeriod ? {rentPeriod} : {}), ...(featureKeys.length ? {featureKeys} : {}) };
     else delete translations._meta;
     return {
       title: prop.title || null,

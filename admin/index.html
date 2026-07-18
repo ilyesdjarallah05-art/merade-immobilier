@@ -143,7 +143,16 @@
               </div>
             </div>
             <div class="field full admin-description-field"><label data-i18n="admin.descriptionDetails">Description / More details</label><textarea name="description" rows="12" data-i18n-placeholder="admin.descriptionPlaceholder" placeholder="Write all property details here..."></textarea><p class="note" data-i18n="admin.descriptionHelp">Write once in any language. The title, description and features are translated automatically when you publish.</p></div>
-            <div class="field full"><label data-i18n="detail.features">Features</label><textarea name="features" rows="3" placeholder="Garage, Garden, Heating... separate with comma or new line"></textarea></div>
+            <section class="admin-feature-picker full" aria-labelledby="adminFeaturePickerTitle">
+              <div class="admin-feature-picker-head">
+                <div>
+                  <h3 id="adminFeaturePickerTitle" data-i18n="admin.featurePickerTitle">Common features</h3>
+                  <p class="note" data-i18n="admin.featurePickerHelp">Select the recurring features below. Add only uncommon details in the custom field.</p>
+                </div>
+              </div>
+              <div class="admin-feature-groups" id="adminFeaturePicker"></div>
+            </section>
+            <div class="field full"><label data-i18n="admin.customFeatures">Other / custom features</label><textarea name="features" rows="3" data-i18n-placeholder="admin.customFeaturesPlaceholder" placeholder="Private terrace, sea view… one feature per line"></textarea></div>
             <label class="field full" style="display:flex;flex-direction:row;align-items:center"><input name="featured" type="checkbox" style="width:auto"> <span data-i18n="admin.featured">Show in featured properties</span></label>
             <label class="field full admin-check-row"><input name="heroFeatured" type="checkbox" style="width:auto"> <span data-home-i18n="admin.heroFeatured">Show in homepage top slider</span></label>
             <div class="field"><label data-home-i18n="admin.heroOrder">Top slider order (1–8)</label><input name="heroOrder" type="number" min="1" max="8" placeholder="1"></div>

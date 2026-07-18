@@ -259,6 +259,55 @@ function cssUrl(v){ return imageSrc(v).replace(/\\/g,'\\\\').replace(/'/g,"\\'")
 function propertyUrl(id){ return `${ROOT}pages/property.html?id=${encodeURIComponent(id)}`; }
 function langLocale(){ return currentLang()==='ar' ? 'ar-DZ' : currentLang()==='fr' ? 'fr-DZ' : 'en-DZ'; }
 function formatPrice(p){ const n = Number(String(p||'').replace(/\s/g,'')); return Number.isNaN(n) ? safeText(p) : new Intl.NumberFormat(langLocale()).format(n); }
+const STANDARD_FEATURE_GROUPS = [
+  { key:'amenities', items:[
+    {key:'semiFurnished',icon:'sofa',aliases:['Semi-Furnished','Semi-meublé','شبه مفروش','نصف مفروشة']},
+    {key:'heating',icon:'heating',aliases:['Chauffage central','Central heating','التدفئة المركزية']},
+    {key:'airConditioning',icon:'airConditioning',aliases:['Climatiseur','Climatiseurs','Air conditioner','تكييف','مكيفات الهواء']},
+    {key:'intercom',aliases:['Interphone','هاتف داخلي']},
+    {key:'elevator',icon:'elevator',aliases:['Ascenseur','Lift','مصعد']},
+    {key:'parking',icon:'parking',aliases:['Car park','Stationnement','موقف سيارات']},
+    {key:'garage',icon:'garage',aliases:['Garage','مرآب']},
+    {key:'equippedKitchen',aliases:['Cuisine équipée','Fitted kitchen','مطبخ مجهز']},
+    {key:'balcony',aliases:['Balcon','Terrasse','Balcony','شرفة']},
+    {key:'garden',aliases:['Jardin','Garden','حديقة']}
+  ]},
+  { key:'security', items:[
+    {key:'alarm',aliases:['Alarme','Alarm','نظام إنذار']},
+    {key:'gatedResidence',icon:'security',aliases:['Résidence fermée','Gated community','إقامة مغلقة']},
+    {key:'videoSurveillance',icon:'camera',aliases:['Vidéo surveillance','CCTV','Caméras de surveillance','مراقبة بالفيديو','كاميرات المراقبة']},
+    {key:'guard',icon:'guard',aliases:['Gardien','Gardiennage','Caretaker','حراسة','حارس']}
+  ]},
+  { key:'building', items:[
+    {key:'modernBuilding',aliases:['Bâtiment moderne','Modern building','مبنى حديث']},
+    {key:'thermalInsulation',aliases:['Isolation thermique','Thermal insulation','عزل حراري','العزل الحراري']},
+    {key:'acousticInsulation',aliases:['Isolation acoustique','Acoustic insulation','Sound insulation','عزل صوتي','العزل الصوتي']}
+  ]}
+];
+const STANDARD_FEATURES = STANDARD_FEATURE_GROUPS.flatMap(group => group.items);
+const STANDARD_FEATURE_BY_KEY = Object.fromEntries(STANDARD_FEATURES.map(item => [item.key,item]));
+function normalizeFeatureText(value){
+  return clean(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[’'\-_/]+/g,' ').replace(/\s+/g,' ').trim();
+}
+function standardFeatureKeyForText(value){
+  const normalized = normalizeFeatureText(value);
+  if(!normalized) return '';
+  return STANDARD_FEATURES.find(item => {
+    const labels = [...(item.aliases || []), ...['en','fr','ar'].map(lang => I18N?.[lang]?.[`feature.${item.key}`])];
+    return labels.some(label => normalizeFeatureText(label) === normalized);
+  })?.key || '';
+}
+function propertyFeatureKeys(p){
+  const explicit = Array.isArray(p?.featureKeys) ? p.featureKeys : [];
+  const translated = Object.values(p?.translations || {}).flatMap(value => Array.isArray(value?.features) ? value.features : []);
+  const inferred = [...(p?.features || []),...translated].map(standardFeatureKeyForText).filter(Boolean);
+  return Array.from(new Set([...explicit,...inferred])).filter(key => STANDARD_FEATURE_BY_KEY[key]);
+}
+function localizedStandardFeature(key){ return t(`feature.${key}`); }
+function localizedCustomFeatures(p){
+  const localized = localizedPropertyValue(p, 'features');
+  return (Array.isArray(localized) ? localized : []).filter(value => !standardFeatureKeyForText(value));
+}
 function localizedPropertyValue(p, field){
   const translated = p?.translations?.[currentLang()]?.[field];
   if(field === 'features') return Array.isArray(translated) && translated.length ? translated : (Array.isArray(p?.features) ? p.features : []);
@@ -266,10 +315,15 @@ function localizedPropertyValue(p, field){
 }
 function propertyTitle(p){ return localizedPropertyValue(p, 'title') || 'Property'; }
 function propertyDescription(p){ return localizedPropertyValue(p, 'description'); }
-function propertyFeatures(p){ return localizedPropertyValue(p, 'features'); }
+function propertyFeatures(p){
+  const combined = [...propertyFeatureKeys(p).map(localizedStandardFeature),...localizedCustomFeatures(p)];
+  const seen = new Set();
+  return combined.filter(value => { const key = normalizeFeatureText(value); if(!key || seen.has(key)) return false; seen.add(key); return true; });
+}
 function propertySearchText(p){
   const translated = Object.values(p?.translations || {}).flatMap(value => [value?.title, value?.description, ...(Array.isArray(value?.features) ? value.features : [])]);
-  return [p?.title,p?.description,...(p?.features || []),...translated].filter(Boolean).join(' ');
+  const standardLabels = propertyFeatureKeys(p).flatMap(key => ['en','fr','ar'].map(lang => I18N?.[lang]?.[`feature.${key}`]));
+  return [p?.title,p?.description,...(p?.features || []),...translated,...standardLabels].filter(Boolean).join(' ');
 }
 function compactPriceParts(p){
   const raw = Number(String(p?.price ?? '').replace(/\s/g,''));
@@ -326,6 +380,25 @@ function cardIcon(name){
     area:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v2H6v5H4V4Zm14 2h-5V4h7v7h-2V6ZM6 13v5h5v2H4v-7h2Zm14 0v7h-7v-2h5v-5h2Z"/></svg>'
   };
   return icons[name] || '';
+}
+function featureIcon(name){
+  const icons = {
+    sofa:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 11V8a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v3M4 11a2 2 0 0 0-2 2v5h20v-5a2 2 0 0 0-4 0v1H6v-1a2 2 0 0 0-2-2Zm1 7v2m14-2v2"/></svg>',
+    heating:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a7 7 0 0 0 7-7c0-4-2.4-7.3-6.2-11.8.2 3-1.1 5.1-3 7.1C8.3 12 7 13.5 7 16a5 5 0 0 0 5 6Zm0-3a2.7 2.7 0 0 1-2.7-2.7c0-1.3.7-2.2 1.6-3.2.8-.9 1.5-1.8 1.5-3.1 1.6 2 2.4 3.7 2.4 5.5A2.8 2.8 0 0 1 12 19Z"/></svg>',
+    airConditioning:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M4.2 6.5l15.6 11M19.8 6.5l-15.6 11M9 4l3 3 3-3M9 20l3-3 3 3M4 10l4 1-1-4m13 7-4-1 1 4m3-7-4 1 1-4M4 14l4-1-1 4"/></svg>',
+    elevator:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 22V2h14v20M9 18V8h6v10M8 6l4-3 4 3M8 20l4 3 4-3"/></svg>',
+    parking:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V3h7a5 5 0 0 1 0 10H6m0-8h7a3 3 0 0 1 0 6H6"/></svg>',
+    garage:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21V8l9-5 9 5v13M6 21V10h12v11M6 14h12M9 17h6"/></svg>',
+    security:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Zm-3-11 2 2 4-4"/></svg>',
+    camera:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h13v11H3zM16 10l5-3v11l-5-3M7 11h5"/></svg>',
+    guard:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4 21a8 8 0 0 1 12.5-6.6M18 22s4-2 4-5.5V14l-4-1.5-4 1.5v2.5C14 20 18 22 18 22Z"/></svg>'
+  };
+  return icons[name] || '';
+}
+function propertyFeatureListItem(value){
+  const key = standardFeatureKeyForText(value);
+  const icon = featureIcon(STANDARD_FEATURE_BY_KEY[key]?.icon);
+  return `<li class="property-feature-item${icon ? ' has-feature-icon' : ''}">${icon ? `<span class="property-feature-icon">${icon}</span>` : ''}<span>${safeText(value)}</span></li>`;
 }
 function wilayaDisplay(value){
   const code = clean(value).split(' - ')[0];
@@ -769,7 +842,7 @@ function initPropertyDetail(){
   const details = [
     [t('detail.type'), catLabel(p.category)], [t('detail.status'), statusTypeLabel(p)], [t('detail.virtualTour'), hasVirtualTour(p) ? t('detail.tourStart') : ''], [t('detail.wilaya'), wilayaDisplay(p.wilaya)], [t('detail.commune'), p.commune], [t('detail.address'), p.address], [t('detail.price'), price], [t('detail.rentalPeriod'), rentalPeriodLabel(p)], [t('detail.surface'), p.surface && `${p.surface} ${t('card.surface')}`], [t('detail.land'), p.landSurface && `${p.landSurface} ${t('card.surface')}`], [t('detail.rooms'), p.rooms], [t('detail.bedrooms'), p.bedrooms], [t('detail.bathrooms'), p.bathrooms], [t('detail.floor'), p.floor], [t('detail.year'), p.yearBuilt], [t('detail.phone'), p.phone]
   ].filter(([,v])=>clean(v)).map(([k,v])=>`<div class="detail-item"><small>${safeText(k)}</small><strong>${safeText(v)}</strong></div>`).join('');
-  const features = propertyFeatures(p).filter(Boolean).map(f=>`<li>${safeText(f)}</li>`).join('');
+  const features = propertyFeatures(p).filter(Boolean).map(propertyFeatureListItem).join('');
   const virtualTour = buildVirtualTourSection(p);
   wrap.innerHTML = `<div class="detail-grid detail-grid-v10">
     <section class="detail-media-col">
@@ -785,7 +858,7 @@ function initPropertyDetail(){
     </aside>
     <section class="detail-info-col">
       ${description ? `<div class="glass info-block description-block"><h2 class="prop-title">${safeText(t('detail.description'))}</h2><p class="sub property-description" id="propertyDescriptionText">${safeText(description)}</p><button class="description-toggle" type="button" data-description-toggle aria-controls="propertyDescriptionText" aria-expanded="false" data-more="${safeText(t('detail.readMore'))}" data-less="${safeText(t('detail.readLess'))}">${safeText(t('detail.readMore'))}</button></div>` : ''}
-      ${features ? `<div class="glass info-block"><h2 class="prop-title">${safeText(t('detail.features'))}</h2><ul class="check-list">${features}</ul></div>` : ''}
+      ${features ? `<div class="glass info-block property-features-block"><h2 class="prop-title">${safeText(t('detail.features'))}</h2><ul class="check-list property-feature-list">${features}</ul></div>` : ''}
     </section>
     ${virtualTour ? `<section class="detail-tour-col">${virtualTour}</section>` : ''}
   </div>`;
@@ -947,6 +1020,24 @@ function bindTourBuilder(){
   $('[name="tourRooms"]')?.addEventListener('input',()=>{ syncTourNamesFromTextarea(); renderTourBuilder(); });
 }
 function setFormValue(form, name, value){ const el = form.elements[name]; if(!el) return; if(el.type === 'checkbox') el.checked = Boolean(value); else el.value = value ?? ''; }
+function renderAdminFeaturePicker(){
+  const picker = $('#adminFeaturePicker');
+  if(!picker) return;
+  picker.innerHTML = STANDARD_FEATURE_GROUPS.map(group => `<fieldset class="admin-feature-group">
+    <legend>${safeText(t(`feature.group.${group.key}`))}</legend>
+    <div class="admin-feature-options">${group.items.map(item => `<label class="admin-feature-option"><input type="checkbox" name="featureKeys" value="${safeText(item.key)}"><span>${safeText(localizedStandardFeature(item.key))}</span></label>`).join('')}</div>
+  </fieldset>`).join('');
+}
+function selectedAdminFeatureKeys(form){
+  return Array.from(form?.querySelectorAll('[name="featureKeys"]:checked') || []).map(input => clean(input.value)).filter(key => STANDARD_FEATURE_BY_KEY[key]);
+}
+function setAdminFeatureSelections(form, property){
+  const selected = new Set(propertyFeatureKeys(property));
+  form?.querySelectorAll('[name="featureKeys"]').forEach(input => { input.checked = selected.has(input.value); });
+}
+function customSourceFeatures(property){
+  return (Array.isArray(property?.features) ? property.features : []).filter(value => !standardFeatureKeyForText(value));
+}
 function syncAdminRentalPeriod(form){
   if(!form) return;
   const field = $('#rentalPeriodField');
@@ -971,7 +1062,8 @@ async function startEditProperty(id){
   setFormValue(form, 'currency', priceParts.unit === 'm' ? 'm' : 'Md');
   setFormValue(form, 'rentalPeriod', rentalPeriodValue(p));
   syncAdminRentalPeriod(form);
-  setFormValue(form, 'features', (p.features || []).join('\n'));
+  setAdminFeatureSelections(form, p);
+  setFormValue(form, 'features', customSourceFeatures(p).join('\n'));
   setFormValue(form, 'featured', p.featured);
   setFormValue(form, 'heroFeatured', p.heroFeatured);
   setFormValue(form, 'heroOrder', p.heroOrder || '');
@@ -1026,6 +1118,7 @@ async function buildPropertyFromForm(form){
     phone: clean(fd.get('phone')),
     address: clean(fd.get('address')),
     description: clean(fd.get('description')),
+    featureKeys: selectedAdminFeatureKeys(form),
     features: clean(fd.get('features')).split(/,|\n/).map(clean).filter(Boolean),
     images: Array.from(new Set([...ADMIN_EXISTING_IMAGES, ...newImages].map(imageSrc).filter(Boolean))),
     featured: fd.get('featured') === 'on',
@@ -1047,7 +1140,7 @@ async function saveLocalProperty(prop){
 }
 async function initAdmin(){
   const loginScreen = $('#loginScreen'); const adminApp = $('#adminApp'); if(!loginScreen || !adminApp) return;
-  ensureAdminHelpers(); bindTourBuilder(); renderImageManager(); renderTourBuilder();
+  ensureAdminHelpers(); renderAdminFeaturePicker(); bindTourBuilder(); renderImageManager(); renderTourBuilder();
   const form = $('#propertyForm');
   form?.elements.status?.addEventListener('change', () => syncAdminRentalPeriod(form));
   syncAdminRentalPeriod(form);
@@ -1661,7 +1754,7 @@ async function translatePropertyContent(prop){
 const VISITOR_TRANSLATION_CACHE_KEY = 'meradeVisitorTranslationsV8';
 function translationFingerprint(prop){
   const rooms = (prop?.virtualTourRooms || prop?.virtual_tour_rooms || []).map(room => room?.room || '');
-  const source = [prop?.id,prop?.title,prop?.description,...(prop?.features || []),...rooms].join('|');
+  const source = [prop?.id,prop?.title,prop?.description,...(prop?.featureKeys || []),...(prop?.features || []),...rooms].join('|');
   let hash = 2166136261;
   for(let i=0;i<source.length;i++){ hash ^= source.charCodeAt(i); hash = Math.imul(hash, 16777619); }
   return `${clean(prop?.id) || 'property'}-${(hash >>> 0).toString(36)}`;
