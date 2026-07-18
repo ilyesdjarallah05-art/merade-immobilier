@@ -535,6 +535,7 @@ function initReveal(){
   items.forEach((el,i)=>{ el.style.transitionDelay = `${Math.min(i%8,5)*55}ms`; obs.observe(el); });
 }
 function initCardMotion(){
+  if(!window.matchMedia('(hover:hover) and (pointer:fine)').matches) return;
   $$('.property-card').forEach(card => {
     card.addEventListener('pointermove', e => {
       const r = card.getBoundingClientRect();
@@ -827,16 +828,19 @@ function initScrollInkTitles(){
       node.replaceWith(fragment);
     });
     target.classList.add('scroll-ink-title');
-    return { target, words: $$('.scroll-ink-word', target) };
+    return { target, words: $$('.scroll-ink-word', target), activeWords:-1 };
   });
 
   let frame = 0;
   const render = () => {
     frame = 0;
-    entries.forEach(({ target, words }) => {
+    entries.forEach(entry => {
+      const { target, words } = entry;
       const bounds = target.getBoundingClientRect();
       const progress = reducedMotion ? 1 : clampUnit((window.innerHeight * .88 - bounds.top) / (window.innerHeight * .48));
       const activeWords = Math.ceil(progress * words.length);
+      if(activeWords === entry.activeWords) return;
+      entry.activeWords = activeWords;
       words.forEach((word, index) => word.classList.toggle('inked', index < activeWords));
     });
   };
@@ -1555,20 +1559,36 @@ function initLatestGalleryMotion(){
     frame = 0;
     const cards = $$('.latest-image-card', gallery);
     const mobile = window.matchMedia('(max-width: 760px)').matches;
-    cards.forEach(card => {
-      if(!mobile){
+    if(!mobile){
+      cards.forEach(card => {
         card.style.removeProperty('--latest-mobile-expand');
+        card.style.removeProperty('--latest-mobile-clip');
         card.classList.remove('is-scroll-expanded');
-        return;
-      }
-      const pair = card.closest('.latest-property-pair');
-      if(pair) clearDesktopCard(pair);
+        card._latestMobileStrength = null;
+      });
+      return;
+    }
+    [...new Set(cards.map(card => card.closest('.latest-property-pair')).filter(Boolean))].forEach(clearDesktopCard);
+    const focusPoint = window.innerHeight * .58;
+    const radius = window.innerHeight * .68;
+    const updates = cards.map((card, index) => {
       const bounds = card.getBoundingClientRect();
       const cardCenter = bounds.top + bounds.height / 2;
-      const focusPoint = window.innerHeight * .58;
-      const radius = window.innerHeight * .68;
       const strength = 1 - clampUnit(Math.abs(cardCenter - focusPoint) / radius);
+      const inlineClip = (1 - strength) * 19;
+      const blockClip = (1 - strength) * 44.5;
+      const firstInPair = index % 2 === 0;
+      const lowerAnchoredPair = Math.floor(index / 2) % 2 === 1;
+      const clip = lowerAnchoredPair
+        ? `${blockClip.toFixed(2)}% ${firstInPair ? inlineClip.toFixed(2) : '0'}% 0 ${firstInPair ? '0' : inlineClip.toFixed(2)}%`
+        : `0 ${firstInPair ? inlineClip.toFixed(2) : '0'}% ${blockClip.toFixed(2)}% ${firstInPair ? '0' : inlineClip.toFixed(2)}%`;
+      return { card, strength, clip };
+    });
+    updates.forEach(({ card, strength, clip }) => {
+      if(Math.abs(strength - (card._latestMobileStrength ?? -1)) < .008) return;
+      card._latestMobileStrength = strength;
       card.style.setProperty('--latest-mobile-expand', strength.toFixed(3));
+      card.style.setProperty('--latest-mobile-clip', clip);
       card.classList.toggle('is-scroll-expanded', strength > .62);
     });
   };
@@ -1585,6 +1605,7 @@ function initLatestIntentScrollMotion(){
   section.dataset.scrollMotionBound = 'yes';
   const buttons = $$('.latest-intent-btn', section);
   let frame = 0;
+  let previousActiveIndex = -2;
   const render = () => {
     frame = 0;
     const mobile = window.matchMedia('(max-width: 760px)').matches;
@@ -1598,6 +1619,8 @@ function initLatestIntentScrollMotion(){
     const progress = clampUnit((start - bounds.top) / (start - end));
     let activeIndex = progress > 0 ? Math.min(buttons.length - 1, Math.floor(progress * buttons.length)) : -1;
     if(bounds.bottom <= 0) activeIndex = buttons.length;
+    if(activeIndex === previousActiveIndex) return;
+    previousActiveIndex = activeIndex;
     buttons.forEach((button, index) => {
       button.classList.toggle('is-scroll-active', index === activeIndex);
       button.classList.toggle('is-scroll-passed', index < activeIndex);
