@@ -1523,18 +1523,27 @@ async function requestMemoryTranslation(source, lang){
     for(const part of parts) translatedParts.push(await requestMemoryTranslation(part, lang));
     return translatedParts.join('\n\n');
   }
-  const protectedNames = [];
-  const protectedText = text.replace(/\b[A-Z][A-Z0-9&.'’\-]{2,}(?:\s+[A-Z][A-Z0-9&.'’\-]{2,})+\b/g, name => {
-    const token = `ZXQPN${protectedNames.length}QXZ`;
-    protectedNames.push({ token, name });
+  const protectedValues = [];
+  const protectValue = value => {
+    const token = `ZXQPN${protectedValues.length}QXZ`;
+    protectedValues.push({ token, value });
     return token;
-  });
+  };
+  // Fallback engines can spell numeric values as words in Arabic, and often
+  // reinterpret French "Md" as a measurement such as m². Mask every number and
+  // mandatory price unit so the restored translation keeps the exact facts.
+  let protectedText = text.replace(/\d+(?:[.,]\d+)?/g, number => protectValue(number));
+  protectedText = protectedText.replace(/(^|\s)(Md|m)(?=\s|[.,;:!?)]|$)/g, (match, prefix, unit) => `${prefix}${protectValue(unit)}`);
+  protectedText = protectedText.replace(/\b[A-Z][A-Z0-9&.'’\-]{2,}(?:\s+[A-Z][A-Z0-9&.'’\-]{2,})+\b/g, name => protectValue(name));
   const endpoint = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(protectedText)}&langpair=${encodeURIComponent(`${sourceLang}|${lang}`)}&mt=1`;
   const response = await aiFetchWithTimeout(endpoint, { method:'GET' }, 15000);
   const data = await response.json().catch(() => null);
   if(!response.ok || Number(data?.responseStatus || response.status) !== 200) throw new Error(data?.responseDetails || `Fallback translation error ${response.status}`);
   let translated = decodeTranslationEntities(data?.responseData?.translatedText);
-  protectedNames.forEach(({token,name}) => { translated = translated.replace(new RegExp(token, 'gi'), name); });
+  // A protected proper-name span can contain an earlier number token (for
+  // example "Appartement F5"). Restore outer spans first, then their nested
+  // tokens, so no placeholder can leak into validation or the rendered text.
+  protectedValues.slice().reverse().forEach(({token,value}) => { translated = translated.replace(new RegExp(token, 'gi'), value); });
   if(!translated) throw new Error('Fallback translation response was empty.');
   validateTranslationFactsForLanguage(text, translated, lang);
   return translated;
