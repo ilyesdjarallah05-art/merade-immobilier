@@ -544,6 +544,48 @@ function initCardMotion(){
   });
 }
 
+function initStatCounters(){
+  const counters = $$('[data-count-to]');
+  if(!counters.length) return;
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const valueText = (counter, value) => `${counter.dataset.countPrefix || ''}${value}${counter.dataset.countSuffix || ''}`;
+  const finish = counter => {
+    counter.textContent = valueText(counter, Number(counter.dataset.countTo || 0));
+    counter.classList.remove('is-counting');
+    counter.dataset.counted = 'yes';
+  };
+  const run = counter => {
+    if(counter.dataset.counted === 'yes') return;
+    const from = Number(counter.dataset.countFrom || 0);
+    const to = Number(counter.dataset.countTo || 0);
+    if(reducedMotion){ finish(counter); return; }
+    counter.dataset.counted = 'yes';
+    counter.classList.add('is-counting');
+    const startedAt = performance.now();
+    const duration = 1100;
+    const tick = now => {
+      const progress = clampUnit((now - startedAt) / duration);
+      const eased = 1 - Math.pow(1 - progress, 4);
+      const value = Math.round(from + (to - from) * eased);
+      counter.textContent = valueText(counter, value);
+      if(progress < 1) requestAnimationFrame(tick);
+      else finish(counter);
+    };
+    requestAnimationFrame(tick);
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if(!entry.isIntersecting) return;
+      $$('.stat-count', entry.target).forEach(run);
+      observer.unobserve(entry.target);
+    });
+  }, { threshold:.3 });
+  if(!reducedMotion) counters.forEach(counter => { counter.textContent = valueText(counter, Number(counter.dataset.countFrom || 0)); });
+  const stats = $('.stats');
+  if(stats) observer.observe(stats);
+  else counters.forEach(run);
+}
+
 let PANNELLUM_LOAD_PROMISE = null;
 function loadPannellumAssets(){
   if(window.pannellum) return Promise.resolve(true);
@@ -1480,12 +1522,15 @@ function initLatestGalleryMotion(){
     pair.classList.remove('has-latest-active');
     $$('.latest-image-card', pair).forEach(item => item.classList.remove('is-latest-active'));
   };
-  gallery.addEventListener('pointerover', event => {
+  gallery.addEventListener('pointermove', event => {
     if(window.matchMedia('(max-width: 760px)').matches) return;
+    const pointerMoved = event.clientX !== gallery._latestPointerX || event.clientY !== gallery._latestPointerY;
+    gallery._latestPointerX = event.clientX;
+    gallery._latestPointerY = event.clientY;
+    if(!pointerMoved) return;
     const card = event.target.closest('.latest-image-card');
     const pair = card?.closest('.latest-property-pair');
-    if(!card || !pair || card.contains(event.relatedTarget)) return;
-    clearTimeout(pair._latestExitTimer);
+    if(!card || !pair) return;
     clearTimeout(pair._latestSwitchTimer);
     const active = $('.latest-image-card.is-latest-active', pair);
     if(active === card) return;
@@ -1503,8 +1548,7 @@ function initLatestGalleryMotion(){
     const pair = event.target.closest('.latest-property-pair');
     if(!pair || pair.contains(event.relatedTarget)) return;
     clearTimeout(pair._latestSwitchTimer);
-    clearTimeout(pair._latestExitTimer);
-    pair._latestExitTimer = setTimeout(() => clearDesktopCard(pair), 140);
+    clearDesktopCard(pair);
   });
   let frame = 0;
   const render = () => {
@@ -1526,6 +1570,37 @@ function initLatestGalleryMotion(){
       const strength = 1 - clampUnit(Math.abs(cardCenter - focusPoint) / radius);
       card.style.setProperty('--latest-mobile-expand', strength.toFixed(3));
       card.classList.toggle('is-scroll-expanded', strength > .62);
+    });
+  };
+  const requestRender = () => {
+    if(!frame) frame = requestAnimationFrame(render);
+  };
+  window.addEventListener('scroll', requestRender, { passive:true });
+  window.addEventListener('resize', requestRender, { passive:true });
+  render();
+}
+function initLatestIntentScrollMotion(){
+  const section = $('#homePropertyActions');
+  if(!section || section.dataset.scrollMotionBound === 'yes') return;
+  section.dataset.scrollMotionBound = 'yes';
+  const buttons = $$('.latest-intent-btn', section);
+  let frame = 0;
+  const render = () => {
+    frame = 0;
+    const mobile = window.matchMedia('(max-width: 760px)').matches;
+    if(!mobile){
+      buttons.forEach(button => button.classList.remove('is-scroll-active','is-scroll-passed'));
+      return;
+    }
+    const bounds = section.getBoundingClientRect();
+    const start = window.innerHeight * .82;
+    const end = -Math.min(bounds.height * .32, 170);
+    const progress = clampUnit((start - bounds.top) / (start - end));
+    let activeIndex = progress > 0 ? Math.min(buttons.length - 1, Math.floor(progress * buttons.length)) : -1;
+    if(bounds.bottom <= 0) activeIndex = buttons.length;
+    buttons.forEach((button, index) => {
+      button.classList.toggle('is-scroll-active', index === activeIndex);
+      button.classList.toggle('is-scroll-passed', index < activeIndex);
     });
   };
   const requestRender = () => {
@@ -2120,6 +2195,13 @@ function initPropertyAI(){
       <form class="ai-form" id="aiForm"><input id="aiInput" autocomplete="off" placeholder="${safeText(aiText('ai.placeholder'))}"><button type="submit">${safeText(aiText('ai.send'))}</button></form>
     </section>`;
   document.body.appendChild(wrap);
+  const dismissNudgeOnScroll = () => {
+    if(window.scrollY <= 80) return;
+    wrap.classList.add('nudge-dismissed');
+    window.removeEventListener('scroll', dismissNudgeOnScroll);
+  };
+  window.addEventListener('scroll', dismissNudgeOnScroll, { passive:true });
+  dismissNudgeOnScroll();
   const panel = $('#aiPanel'), input = $('#aiInput'), messages = $('#aiMessages');
   const open = () => { wrap.classList.add('open'); setTimeout(()=>input?.focus(),80); };
   const close = () => wrap.classList.remove('open');
@@ -2163,7 +2245,7 @@ async function init(){
   applyLanguage(); bindLanguageSelectors(); applyExtraTranslations(); bindExtraTranslationRefresh();
   LOCATION_DATA = fallbackLocationData();
   fillWilayaSelects(); applyUrlFilters(); bindLocationControls();
-  initNav(); initReveal(); initSearchBox(); initContactForm();
+  initNav(); initReveal(); initStatCounters(); initSearchBox(); initContactForm();
 
   try{
     const [, locationsResult] = await Promise.allSettled([loadDatabaseProperties(), loadLocationData()]);
@@ -2184,6 +2266,7 @@ async function init(){
     initListings();
     initHomeCities();
     initHomePropertyShowcases();
+    initLatestIntentScrollMotion();
     initPropertyAI();
     initPropertyDetail();
     await initAdmin();
