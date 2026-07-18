@@ -1470,16 +1470,15 @@ function initLatestGalleryMotion(){
   const gallery = $('#latestPropertyShowcase');
   if(!gallery || gallery.dataset.motionBound === 'yes') return;
   gallery.dataset.motionBound = 'yes';
-  const desktopAnimationDelay = 2000;
+  const desktopCardCooldown = 2000;
   const activateDesktopCard = (pair, card) => {
     pair.classList.add('has-latest-active');
     $$('.latest-image-card', pair).forEach(item => item.classList.toggle('is-latest-active', item === card));
-    pair._latestLockUntil = performance.now() + desktopAnimationDelay;
+    card._latestActivatedAt = performance.now();
   };
   const clearDesktopCard = pair => {
     pair.classList.remove('has-latest-active');
     $$('.latest-image-card', pair).forEach(item => item.classList.remove('is-latest-active'));
-    pair._latestLockUntil = 0;
   };
   gallery.addEventListener('pointerover', event => {
     if(window.matchMedia('(max-width: 760px)').matches) return;
@@ -1490,8 +1489,8 @@ function initLatestGalleryMotion(){
     clearTimeout(pair._latestSwitchTimer);
     const active = $('.latest-image-card.is-latest-active', pair);
     if(active === card) return;
-    const wait = Math.max(0, (pair._latestLockUntil || 0) - performance.now());
-    if(!active || wait === 0){
+    const wait = Math.max(0, (card._latestActivatedAt || 0) + desktopCardCooldown - performance.now());
+    if(wait === 0){
       activateDesktopCard(pair, card);
       return;
     }
@@ -1505,7 +1504,7 @@ function initLatestGalleryMotion(){
     if(!pair || pair.contains(event.relatedTarget)) return;
     clearTimeout(pair._latestSwitchTimer);
     clearTimeout(pair._latestExitTimer);
-    pair._latestExitTimer = setTimeout(() => clearDesktopCard(pair), desktopAnimationDelay);
+    pair._latestExitTimer = setTimeout(() => clearDesktopCard(pair), 140);
   });
   let frame = 0;
   const render = () => {
