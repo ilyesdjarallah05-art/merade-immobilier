@@ -168,6 +168,10 @@ Object.assign(EXTRA_TRANSLATIONS.ar, {
   'ai.onlySite':'لا يحتاج الزائر إلى تسجيل الدخول. اقتراحات العقارات تبقى مبنية على إعلانات الموقع.'
 });
 
+Object.assign(EXTRA_TRANSLATIONS.en, {'home.latest.more':'See more'});
+Object.assign(EXTRA_TRANSLATIONS.fr, {'home.latest.more':'Voir plus'});
+Object.assign(EXTRA_TRANSLATIONS.ar, {'home.latest.more':'عرض المزيد'});
+
 function extraText(key){
   const lang = typeof currentLang === 'function' ? currentLang() : 'en';
   return EXTRA_TRANSLATIONS[lang]?.[key] || EXTRA_TRANSLATIONS.en[key] || key;
@@ -1446,14 +1450,63 @@ function buildOverlayPropertyCard(p, extraClass = ''){
 function buildLatestImageCard(p, index){
   const img = firstImage(p) || 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1600&q=78';
   const title = propertyTitle(p);
+  const location = propertyLocation(p);
+  const price = propertyPriceText(p);
   return `<a class="latest-image-card ${index % 4 === 0 || index % 4 === 3 ? 'is-tall' : ''}" href="${propertyUrl(p.id)}" aria-label="${safeText(title)}">
-    <img src="${safeText(img)}" alt="${safeText(title)}" loading="lazy">
+    <span class="latest-image-media">
+      <img src="${safeText(img)}" alt="${safeText(title)}" loading="lazy">
+      <span class="latest-image-reveal">${safeText(extraText('home.latest.more'))}</span>
+    </span>
+    <span class="latest-image-info">
+      <strong>${safeText(title)}</strong>
+      <span class="latest-image-meta">
+        <small>${cardIcon('pin')}<span>${safeText(location)}</span></small>
+        ${price ? `<b>${safeText(price)}</b>` : ''}
+      </span>
+    </span>
   </a>`;
 }
 function initLatestGalleryMotion(){
   const gallery = $('#latestPropertyShowcase');
   if(!gallery || gallery.dataset.motionBound === 'yes') return;
   gallery.dataset.motionBound = 'yes';
+  const desktopAnimationDelay = 2000;
+  const activateDesktopCard = (pair, card) => {
+    pair.classList.add('has-latest-active');
+    $$('.latest-image-card', pair).forEach(item => item.classList.toggle('is-latest-active', item === card));
+    pair._latestLockUntil = performance.now() + desktopAnimationDelay;
+  };
+  const clearDesktopCard = pair => {
+    pair.classList.remove('has-latest-active');
+    $$('.latest-image-card', pair).forEach(item => item.classList.remove('is-latest-active'));
+    pair._latestLockUntil = 0;
+  };
+  gallery.addEventListener('pointerover', event => {
+    if(window.matchMedia('(max-width: 760px)').matches) return;
+    const card = event.target.closest('.latest-image-card');
+    const pair = card?.closest('.latest-property-pair');
+    if(!card || !pair || card.contains(event.relatedTarget)) return;
+    clearTimeout(pair._latestExitTimer);
+    clearTimeout(pair._latestSwitchTimer);
+    const active = $('.latest-image-card.is-latest-active', pair);
+    if(active === card) return;
+    const wait = Math.max(0, (pair._latestLockUntil || 0) - performance.now());
+    if(!active || wait === 0){
+      activateDesktopCard(pair, card);
+      return;
+    }
+    pair._latestSwitchTimer = setTimeout(() => {
+      if(pair.matches(':hover') && card.matches(':hover')) activateDesktopCard(pair, card);
+    }, wait);
+  });
+  gallery.addEventListener('pointerout', event => {
+    if(window.matchMedia('(max-width: 760px)').matches) return;
+    const pair = event.target.closest('.latest-property-pair');
+    if(!pair || pair.contains(event.relatedTarget)) return;
+    clearTimeout(pair._latestSwitchTimer);
+    clearTimeout(pair._latestExitTimer);
+    pair._latestExitTimer = setTimeout(() => clearDesktopCard(pair), desktopAnimationDelay);
+  });
   let frame = 0;
   const render = () => {
     frame = 0;
@@ -1462,14 +1515,18 @@ function initLatestGalleryMotion(){
     cards.forEach(card => {
       if(!mobile){
         card.style.removeProperty('--latest-mobile-expand');
+        card.classList.remove('is-scroll-expanded');
         return;
       }
+      const pair = card.closest('.latest-property-pair');
+      if(pair) clearDesktopCard(pair);
       const bounds = card.getBoundingClientRect();
       const cardCenter = bounds.top + bounds.height / 2;
       const focusPoint = window.innerHeight * .58;
       const radius = window.innerHeight * .68;
       const strength = 1 - clampUnit(Math.abs(cardCenter - focusPoint) / radius);
       card.style.setProperty('--latest-mobile-expand', strength.toFixed(3));
+      card.classList.toggle('is-scroll-expanded', strength > .62);
     });
   };
   const requestRender = () => {
@@ -1484,7 +1541,7 @@ function initHomePropertyShowcases(){
   const handpickedBox = $('#handpickedPropertiesTrack');
   const items = propertySortNewest(allProperties()).filter(p => firstImage(p));
   if(latestBox){
-    const latest = items.slice(0,6);
+    const latest = items.slice(0,4);
     if(latest.length){
       const pairs = [];
       for(let index = 0; index < latest.length; index += 2){
