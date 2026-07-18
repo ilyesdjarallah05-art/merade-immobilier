@@ -670,11 +670,6 @@ function buildHeroSlide(p, index){
         <p class="hero-place">${cardIcon('pin')}<span>${propertyLocation(p)}</span></p>
         ${price ? `<p class="hero-price">${price}</p>` : ''}
       </a>
-      <nav class="hero-intent-actions" aria-label="${safeText(extraText('hero.intent.label'))}">
-        <a class="hero-intent-btn hero-intent-buy" href="${ROOT}pages/estates.html?status=sale">${safeText(extraText('hero.intent.buy'))}</a>
-        <a class="hero-intent-btn hero-intent-sell" href="${ROOT}pages/contact.html?subject=sell">${safeText(extraText('hero.intent.sell'))}</a>
-        <a class="hero-intent-btn hero-intent-rent" href="${ROOT}pages/estates.html?status=rent">${safeText(extraText('hero.intent.rent'))}</a>
-      </nav>
     </div>
   </article>`;
 }
@@ -1448,18 +1443,57 @@ function buildOverlayPropertyCard(p, extraClass = ''){
     </span>
   </a>`;
 }
+function buildLatestImageCard(p, index){
+  const img = firstImage(p) || 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1600&q=78';
+  const title = propertyTitle(p);
+  return `<a class="latest-image-card ${index % 4 === 0 || index % 4 === 3 ? 'is-tall' : ''}" href="${propertyUrl(p.id)}" aria-label="${safeText(title)}">
+    <img src="${safeText(img)}" alt="${safeText(title)}" loading="lazy">
+  </a>`;
+}
+function initLatestGalleryMotion(){
+  const gallery = $('#latestPropertyShowcase');
+  if(!gallery || gallery.dataset.motionBound === 'yes') return;
+  gallery.dataset.motionBound = 'yes';
+  let frame = 0;
+  const render = () => {
+    frame = 0;
+    const cards = $$('.latest-image-card', gallery);
+    const mobile = window.matchMedia('(max-width: 760px)').matches;
+    cards.forEach(card => {
+      if(!mobile){
+        card.style.removeProperty('--latest-mobile-expand');
+        return;
+      }
+      const bounds = card.getBoundingClientRect();
+      const cardCenter = bounds.top + bounds.height / 2;
+      const focusPoint = window.innerHeight * .58;
+      const radius = window.innerHeight * .68;
+      const strength = 1 - clampUnit(Math.abs(cardCenter - focusPoint) / radius);
+      card.style.setProperty('--latest-mobile-expand', strength.toFixed(3));
+    });
+  };
+  const requestRender = () => {
+    if(!frame) frame = requestAnimationFrame(render);
+  };
+  window.addEventListener('scroll', requestRender, { passive:true });
+  window.addEventListener('resize', requestRender, { passive:true });
+  render();
+}
 function initHomePropertyShowcases(){
   const latestBox = $('#latestPropertyShowcase');
   const handpickedBox = $('#handpickedPropertiesTrack');
   const items = propertySortNewest(allProperties()).filter(p => firstImage(p));
   if(latestBox){
-    const latest = items.slice(0,4);
-    latestBox.innerHTML = latest.length ? [
-      latest[0] ? buildOverlayPropertyCard(latest[0], 'latest-large') : '',
-      latest[1] ? buildOverlayPropertyCard(latest[1], 'latest-wide') : '',
-      latest[2] ? buildOverlayPropertyCard(latest[2], 'latest-small') : '',
-      `<a class="latest-view-all" href="${ROOT}pages/estates.html"><strong>${safeText(extraText('home.latest.view'))}</strong><span>${safeText(extraText('home.latest.viewSub'))}</span><i>→</i></a>`
-    ].join('') : `<div class="empty light-empty">${safeText(t('empty'))}</div>`;
+    const latest = items.slice(0,6);
+    if(latest.length){
+      const pairs = [];
+      for(let index = 0; index < latest.length; index += 2){
+        const cards = latest.slice(index,index + 2).map((property,offset) => buildLatestImageCard(property,index + offset)).join('');
+        pairs.push(`<div class="latest-property-pair">${cards}</div>`);
+      }
+      latestBox.innerHTML = pairs.join('');
+      initLatestGalleryMotion();
+    }else latestBox.innerHTML = `<div class="empty">${safeText(t('empty'))}</div>`;
   }
   if(handpickedBox){
     const handpicked = propertySortNewest(allProperties()).filter(p => p.featured || firstImage(p)).slice(0,10);
