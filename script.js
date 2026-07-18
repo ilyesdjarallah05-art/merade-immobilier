@@ -306,7 +306,8 @@ function propertyFeatureKeys(p){
 function localizedStandardFeature(key){ return t(`feature.${key}`); }
 function localizedCustomFeatures(p){
   const localized = localizedPropertyValue(p, 'features');
-  return (Array.isArray(localized) ? localized : []).filter(value => !standardFeatureKeyForText(value));
+  const source = Array.isArray(p?.features) ? p.features : [];
+  return (Array.isArray(localized) ? localized : []).filter((value,index) => !standardFeatureKeyForText(value) && !standardFeatureKeyForText(source[index]));
 }
 function localizedPropertyValue(p, field){
   const translated = p?.translations?.[currentLang()]?.[field];
