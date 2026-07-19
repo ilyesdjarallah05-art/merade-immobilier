@@ -2535,6 +2535,37 @@ body.home-page{overflow-x:clip!important}
   .home-page .must-see-section .explore-dot{display:none!important}
 }
 
+/* v46 — final lightweight phone surfaces */
+@media(max-width:760px){
+  .home-page .nav,
+  .home-page .nav.scrolled,
+  .home-page .home-search-bar,
+  .home-page .about-modern-grid,
+  .home-page .about-modern-visual,
+  .home-page .stats,
+  .home-page .service,
+  .home-page .glass,
+  .home-page .process-card,
+  .home-page .why-mini-card,
+  .home-page .home-bottom-card,
+  .home-page .city-nav,
+  .home-page .ai-float{
+    box-shadow:none!important
+  }
+  .home-page .handpicked-card{
+    clip-path:none!important;
+    border-radius:12px!important
+  }
+  .home-page .handpicked-track,
+  .home-page .city-track{
+    scroll-snap-type:x proximity;
+    -webkit-overflow-scrolling:touch
+  }
+  .home-page .scroll-ink-title .scroll-ink-word{
+    transition-duration:.16s!important
+  }
+}
+
 /* v23 — simple modern-luxury typography */
 :root{
   --font-body:"Manrope",Inter,system-ui,-apple-system,"Segoe UI",sans-serif;

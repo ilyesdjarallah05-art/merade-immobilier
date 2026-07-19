@@ -297,7 +297,34 @@ function deferredImageSourceAttribute(value){
     ? `data-deferred-src="${source}"`
     : `src="${source}"`;
 }
-function initDeferredImages(container, { root = null, rootMargin = '70% 0px' } = {}){
+let LAST_SCROLL_ACTIVITY_AT = 0;
+let SCROLL_ACTIVITY_BOUND = false;
+function bindScrollActivityTracker(){
+  if(SCROLL_ACTIVITY_BOUND) return;
+  SCROLL_ACTIVITY_BOUND = true;
+  window.addEventListener('scroll', () => { LAST_SCROLL_ACTIVITY_AT = Date.now(); }, { passive:true });
+}
+function scheduleStagedLoads(items, load, { delay = 900, interval = 360 } = {}){
+  const queue = [...items];
+  if(!queue.length) return;
+  bindScrollActivityTracker();
+  const step = () => {
+    if(!queue.length) return;
+    if(Date.now() - LAST_SCROLL_ACTIVITY_AT < 240){
+      setTimeout(step, 280);
+      return;
+    }
+    const run = () => {
+      const item = queue.shift();
+      if(item) load(item);
+      if(queue.length) setTimeout(step, interval);
+    };
+    if('requestIdleCallback' in window) requestIdleCallback(run, { timeout:1200 });
+    else setTimeout(run, 0);
+  };
+  setTimeout(step, delay);
+}
+function initDeferredImages(container, { root = null, rootMargin = '70% 0px', stagedDelay = null, stagedInterval = 360, stagedWarmOnly = false } = {}){
   const images = $$('img[data-deferred-src]', container || document);
   if(!images.length) return;
   const load = image => {
@@ -305,6 +332,17 @@ function initDeferredImages(container, { root = null, rootMargin = '70% 0px' } =
     if(!source) return;
     image.src = source;
     delete image.dataset.deferredSrc;
+    delete image.dataset.deferredWarmed;
+    image._deferredPreloader = null;
+  };
+  const warm = image => {
+    const source = image.dataset.deferredSrc;
+    if(!source || image._deferredPreloader) return;
+    const preloader = new Image();
+    preloader.decoding = 'async';
+    preloader.src = source;
+    image._deferredPreloader = preloader;
+    image.dataset.deferredWarmed = 'yes';
   };
   if(!('IntersectionObserver' in window)){
     images.forEach(load);
@@ -316,6 +354,7 @@ function initDeferredImages(container, { root = null, rootMargin = '70% 0px' } =
     observer.unobserve(entry.target);
   }), { root, rootMargin, threshold:.01 });
   images.forEach(image => observer.observe(image));
+  if(Number.isFinite(stagedDelay)) scheduleStagedLoads(images, stagedWarmOnly ? warm : load, { delay:stagedDelay, interval:stagedInterval });
 }
 function propertyUrl(id){ return `${ROOT}pages/property.html?id=${encodeURIComponent(id)}`; }
 function langLocale(){ return currentLang()==='ar' ? 'ar-DZ' : currentLang()==='fr' ? 'fr-DZ' : 'en-DZ'; }
@@ -690,7 +729,8 @@ function buildCard(p){
 function renderCards(container, properties){
   if(!container) return;
   container.innerHTML = properties.length ? properties.map(buildCard).join('') : `<div class="empty">${safeText(t('empty'))}</div>`;
-  initDeferredImages(container);
+  const stageHomeImages = document.body.classList.contains('home-page') && container.closest?.('.must-see-section');
+  initDeferredImages(container, stageHomeImages ? { stagedDelay:850, stagedInterval:340 } : {});
   initReveal(); initCardMotion();
 }
 
@@ -791,6 +831,7 @@ function initHeroSlider(){
   };
   loadSlideBackground(slides[0]);
   loadSlideBackground(slides[1]);
+  scheduleStagedLoads(slides.slice(2), loadSlideBackground, { delay:900, interval:420 });
   function go(next){
     index = (next + slides.length) % slides.length;
     loadSlideBackground(slides[index]);
@@ -1524,7 +1565,7 @@ function propertyCityHaystack(p){
 function initHomeCities(){
   const track = $('#cityTrack');
   if(!track) return;
-  initDeferredImages(track, { root:track, rootMargin:'0px 75%' });
+  initDeferredImages(track, { root:track, rootMargin:'0px 150%', stagedDelay:2200, stagedInterval:380, stagedWarmOnly:true });
   if(!track.dataset.scrollBound){
     $$('[data-city-scroll]').forEach(btn => btn.addEventListener('click', () => {
       const direction = btn.dataset.cityScroll === 'next' ? 1 : -1;
@@ -1578,17 +1619,33 @@ function initDeferredCardBackgrounds(root){
     if(!source) return;
     card.style.setProperty('--bg', `url('${cssUrl(source)}')`);
     delete card.dataset.deferredBg;
+    delete card.dataset.deferredWarmed;
+    card._deferredPreloader = null;
+  };
+  const warm = card => {
+    const source = card.dataset.deferredBg;
+    if(!source || card._deferredPreloader) return;
+    const preloader = new Image();
+    preloader.decoding = 'async';
+    preloader.src = source;
+    card._deferredPreloader = preloader;
+    card.dataset.deferredWarmed = 'yes';
   };
   if(!('IntersectionObserver' in window)){
     cards.forEach(load);
     return;
   }
+  const eagerCount = window.matchMedia?.('(max-width: 760px)').matches ? 5 : 3;
+  cards.slice(0, eagerCount).forEach(load);
+  const pendingCards = cards.filter(card => card.dataset.deferredBg);
+  if(!pendingCards.length) return;
   const observer = new IntersectionObserver(entries => entries.forEach(entry => {
     if(!entry.isIntersecting) return;
     load(entry.target);
     observer.unobserve(entry.target);
-  }), { root, rootMargin:'0px 75%', threshold:.01 });
-  cards.forEach(card => observer.observe(card));
+  }), { root, rootMargin:'0px 150%', threshold:.01 });
+  pendingCards.forEach(card => observer.observe(card));
+  scheduleStagedLoads(pendingCards, warm, { delay:1100, interval:340 });
 }
 function buildLatestImageCard(p, index){
   const img = firstImage(p) || 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1600&q=78';
