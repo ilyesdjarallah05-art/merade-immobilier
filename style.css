@@ -2566,6 +2566,137 @@ body.home-page{overflow-x:clip!important}
   }
 }
 
+/* v47 — maximum mobile performance for public and property pages */
+.gallery-more{
+  flex:0 0 154px;
+  height:112px;
+  border:1px solid rgba(0,0,0,.14);
+  border-radius:18px;
+  background:#ededeb;
+  color:#111;
+  display:grid;
+  place-content:center;
+  gap:4px;
+  text-align:center;
+  cursor:pointer;
+  scroll-snap-align:start
+}
+.gallery-more strong{font-size:1.18rem}.gallery-more span{font-size:.66rem;font-weight:800}
+@media(max-width:760px){
+  body:not(.home-page):not(.admin-body)::before,
+  body:not(.home-page):not(.admin-body)::after{
+    content:none!important;
+    display:none!important;
+    animation:none!important
+  }
+  body:not(.home-page):not(.admin-body) .nav,
+  body:not(.home-page):not(.admin-body) .nav.scrolled,
+  body:not(.home-page):not(.admin-body) .nav-links,
+  body:not(.home-page):not(.admin-body) .filters-panel,
+  body:not(.home-page):not(.admin-body) .glass,
+  body:not(.home-page):not(.admin-body) .property-card,
+  body:not(.home-page):not(.admin-body) .contact-card,
+  body:not(.home-page):not(.admin-body) .page-loader,
+  body:not(.home-page):not(.admin-body) .lightbox-close,
+  body:not(.home-page):not(.admin-body) .lightbox-nav{
+    -webkit-backdrop-filter:none!important;
+    backdrop-filter:none!important
+  }
+  body:not(.home-page):not(.admin-body) .nav,
+  body:not(.home-page):not(.admin-body) .nav.scrolled,
+  body:not(.home-page):not(.admin-body) .nav-links,
+  body:not(.home-page):not(.admin-body) .filters-panel,
+  body:not(.home-page):not(.admin-body) .glass,
+  body:not(.home-page):not(.admin-body) .property-card,
+  body:not(.home-page):not(.admin-body) .contact-card,
+  body:not(.home-page):not(.admin-body) .detail-image,
+  body:not(.home-page):not(.admin-body) .lightbox-img,
+  body:not(.home-page):not(.admin-body) .brand-mark,
+  body:not(.home-page):not(.admin-body) .language-select,
+  body:not(.home-page):not(.admin-body) .btn,
+  body:not(.home-page):not(.admin-body) .btn-outline,
+  body:not(.home-page):not(.admin-body) .btn-soft,
+  body:not(.home-page):not(.admin-body) .ai-float,
+  body:not(.home-page):not(.admin-body) .ai-nudge,
+  body:not(.home-page):not(.admin-body) .ai-panel{
+    box-shadow:none!important
+  }
+  body:not(.home-page):not(.admin-body) .ai-nudge{
+    animation:none!important
+  }
+  body:not(.home-page):not(.admin-body) img,
+  body:not(.home-page):not(.admin-body) .property-card img,
+  body.property-page .detail-image img,
+  body.property-page .gallery-thumb img{
+    filter:none!important
+  }
+  body:not(.home-page):not(.admin-body) .property-card{
+    content-visibility:auto;
+    contain-intrinsic-size:auto 520px;
+    contain:layout paint style;
+    will-change:auto!important;
+    transition:none!important
+  }
+  body:not(.home-page):not(.admin-body) .property-card img,
+  body:not(.home-page):not(.admin-body) .reveal{
+    will-change:auto!important;
+    transition:none!important
+  }
+  body:not(.home-page):not(.admin-body) .reveal{
+    opacity:1!important;
+    transform:none!important
+  }
+  body.property-page .detail-image,
+  body.property-page .gallery,
+  body.property-page .detail-side,
+  body.property-page .info-block,
+  body.property-page .tour-panel{
+    contain:paint
+  }
+  body.property-page .detail-side,
+  body.property-page .info-block,
+  body.property-page .tour-panel{
+    background:#fff!important
+  }
+  body.property-page .gallery-thumb{
+    content-visibility:auto;
+    contain-intrinsic-size:118px 82px
+  }
+  body.property-page .gallery-thumb img{
+    transform:none!important;
+    transition:none!important
+  }
+  body.property-page #detailMainImage{
+    transition:opacity .16s ease!important
+  }
+  body.property-page #detailMainImage.is-loading{opacity:.72}
+  body.property-page .lightbox-img{border-radius:8px!important}
+  body.property-page .lightbox-close,
+  body.property-page .lightbox-nav{
+    background:rgba(25,25,25,.92)!important
+  }
+  .gallery-more{
+    flex:0 0 118px;
+    height:82px;
+    border:1px solid rgba(0,0,0,.14);
+    border-radius:14px;
+    background:#ededeb;
+    color:#111;
+    display:grid;
+    place-content:center;
+    gap:3px;
+    text-align:center;
+    cursor:pointer;
+    scroll-snap-align:start
+  }
+  .gallery-more strong{font-size:1.05rem}
+  .gallery-more span{font-size:.6rem;font-weight:800}
+  .home-page main>section{contain:paint}
+  .home-page .brand-mark,
+  .home-page .language-select{box-shadow:none!important}
+  .home-page .hero-property-card h1{text-shadow:none!important}
+}
+
 /* v23 — simple modern-luxury typography */
 :root{
   --font-body:"Manrope",Inter,system-ui,-apple-system,"Segoe UI",sans-serif;

@@ -171,6 +171,9 @@ Object.assign(EXTRA_TRANSLATIONS.ar, {
 Object.assign(EXTRA_TRANSLATIONS.en, {'home.latest.more':'See more'});
 Object.assign(EXTRA_TRANSLATIONS.fr, {'home.latest.more':'Voir plus'});
 Object.assign(EXTRA_TRANSLATIONS.ar, {'home.latest.more':'عرض المزيد'});
+Object.assign(EXTRA_TRANSLATIONS.en, {'detail.morePhotos':'More photos'});
+Object.assign(EXTRA_TRANSLATIONS.fr, {'detail.morePhotos':'Plus de photos'});
+Object.assign(EXTRA_TRANSLATIONS.ar, {'detail.morePhotos':'المزيد من الصور'});
 
 function extraText(key){
   const lang = typeof currentLang === 'function' ? currentLang() : 'en';
@@ -831,7 +834,9 @@ function initHeroSlider(){
   };
   loadSlideBackground(slides[0]);
   loadSlideBackground(slides[1]);
-  scheduleStagedLoads(slides.slice(2), loadSlideBackground, { delay:900, interval:420 });
+  if(!window.matchMedia?.('(max-width: 760px)').matches){
+    scheduleStagedLoads(slides.slice(2), loadSlideBackground, { delay:900, interval:420 });
+  }
   function go(next){
     index = (next + slides.length) % slides.length;
     loadSlideBackground(slides[index]);
@@ -1090,25 +1095,53 @@ function initVirtualTour(p){
 }
 
 function buildPropertyGallery(p){
-  const images = extractImageList([p.images, p.image, p.mainImage, p.coverImage, p.photo, p.photos, p.gallery]).map(imageSrc).filter(Boolean);
+  const images = [...new Set(extractImageList([p.images, p.image, p.mainImage, p.coverImage, p.photo, p.photos, p.gallery]).map(imageSrc).filter(Boolean))];
   if(!images.length) return `<div class="detail-image detail-main-photo empty-photo"></div>`;
-  const thumbs = images.map((img,i)=>`<button class="gallery-thumb ${i===0?'active':''}" type="button" data-gallery-index="${i}" aria-label="Photo ${i+1}"><img src="${img}" alt="${safeText(propertyTitle(p) || 'Photo')} ${i+1}" loading="lazy"></button>`).join('');
-  return `<div class="detail-image detail-main-photo" id="detailMainPhoto" role="button" tabindex="0" aria-label="Open photo gallery"><img id="detailMainImage" src="${images[0]}" alt="${safeText(propertyTitle(p))}" data-gallery-index="0"></div>${images.length > 1 ? `<div class="gallery">${thumbs}</div>` : ''}`;
+  const previewLimit = window.matchMedia?.('(max-width: 760px)').matches ? 2 : 8;
+  const previewImages = images.slice(0, previewLimit);
+  const thumbs = previewImages.map((img,i)=>`<button class="gallery-thumb ${i===0?'active':''}" type="button" data-gallery-index="${i}" aria-label="Photo ${i+1}"><img ${deferredImageSourceAttribute(img)} alt="${safeText(propertyTitle(p) || 'Photo')} ${i+1}" loading="lazy" decoding="async" fetchpriority="low"></button>`).join('');
+  const remaining = Math.max(0, images.length - previewImages.length);
+  const more = remaining ? `<button class="gallery-more" type="button" data-gallery-more="${previewImages.length}" aria-label="${safeText(extraText('detail.morePhotos'))}"><strong>+${remaining}</strong><span>${safeText(extraText('detail.morePhotos'))}</span></button>` : '';
+  return `<div class="detail-image detail-main-photo" id="detailMainPhoto" role="button" tabindex="0" aria-label="Open photo gallery"><img id="detailMainImage" src="${images[0]}" alt="${safeText(propertyTitle(p))}" data-gallery-index="0" decoding="async" fetchpriority="high"></div>${images.length > 1 ? `<div class="gallery">${thumbs}${more}</div>` : ''}`;
 }
 function initPropertyGallery(images){
-  images = (images || []).map(imageSrc).filter(Boolean);
+  images = [...new Set((images || []).map(imageSrc).filter(Boolean))];
   const main = $('#detailMainImage');
   const mainBox = $('#detailMainPhoto');
   if(!main || !mainBox || !images.length) return;
+  const gallery = $('.gallery');
+  if(gallery) initDeferredImages(gallery, { root:gallery, rootMargin:'0px 75%' });
   let current = 0;
+  let swapToken = 0;
+  const preloadNeighbors = index => {
+    [index - 1,index + 1].forEach(nextIndex => {
+      const preload = new Image();
+      preload.decoding = 'async';
+      preload.src = images[(nextIndex + images.length) % images.length];
+    });
+  };
   function setCurrent(index){
     current = (index + images.length) % images.length;
-    main.src = images[current];
-    main.dataset.galleryIndex = current;
+    const token = ++swapToken;
+    const source = images[current];
+    main.classList.add('is-loading');
+    const preload = new Image();
+    preload.decoding = 'async';
+    preload.src = source;
+    const commit = () => {
+      if(token !== swapToken) return;
+      main.src = source;
+      main.dataset.galleryIndex = current;
+      main.classList.remove('is-loading');
+      preloadNeighbors(current);
+    };
+    if(preload.complete) commit();
+    else { preload.onload = commit; preload.onerror = commit; }
     $$('.gallery-thumb').forEach(btn=>btn.classList.toggle('active', Number(btn.dataset.galleryIndex) === current));
   }
   $$('.gallery-thumb').forEach(btn=>btn.addEventListener('click',()=>setCurrent(Number(btn.dataset.galleryIndex))));
-  function openLightbox(){
+  function openLightbox(startIndex = current){
+    current = (startIndex + images.length) % images.length;
     let startX = 0;
     const overlay = document.createElement('div');
     overlay.className = 'lightbox';
@@ -1116,7 +1149,7 @@ function initPropertyGallery(images){
     document.body.appendChild(overlay);
     document.body.style.overflow = 'hidden';
     const img = $('.lightbox-img', overlay), count = $('.lightbox-count', overlay);
-    const show = (index) => { current = (index + images.length) % images.length; img.src = images[current]; count.textContent = `${current+1} / ${images.length}`; setCurrent(current); };
+    const show = (index) => { current = (index + images.length) % images.length; img.src = images[current]; count.textContent = `${current+1} / ${images.length}`; setCurrent(current); preloadNeighbors(current); };
     $('.lightbox-close', overlay).addEventListener('click', close);
     $('.lightbox-prev', overlay).addEventListener('click', ()=>show(current-1));
     $('.lightbox-next', overlay).addEventListener('click', ()=>show(current+1));
@@ -1128,8 +1161,9 @@ function initPropertyGallery(images){
     document.addEventListener('keydown', onKey);
     show(current);
   }
-  mainBox.addEventListener('click', openLightbox);
+  mainBox.addEventListener('click', ()=>openLightbox());
   mainBox.addEventListener('keydown', e=>{ if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLightbox(); } });
+  $('[data-gallery-more]')?.addEventListener('click', e=>openLightbox(Number(e.currentTarget.dataset.galleryMore || current)));
 }
 
 function initPropertyDetail(){
@@ -2317,7 +2351,7 @@ async function requestAutomaticTitleBatch(properties, lang){
   });
 }
 async function prepareVisitorPropertyTranslations(){
-  if(isAdminScreen()) return;
+  if(isAdminScreen()) return false;
   const lang = currentLang();
   const properties = allProperties();
   properties.forEach(applyCachedVisitorTranslation);
@@ -2329,18 +2363,22 @@ async function prepareVisitorPropertyTranslations(){
         const translated = await translatePropertyContentForLanguage(property, lang, true);
         mergePropertyTranslations(property, { [lang]:translated });
         cacheVisitorTranslation(property);
+        return true;
       }catch(err){ console.warn('Automatic property translation failed:', err); }
     }
-    return;
+    return false;
   }
+  let changed = false;
   const missingTitles = properties.filter(property => clean(property.title) && !clean(property.translations?.[lang]?.title));
   for(let start=0;start<missingTitles.length;start+=12){
     const batch = missingTitles.slice(start,start+12);
     try{
       const translated = await requestAutomaticTitleBatch(batch, lang);
       batch.forEach((property,index) => { mergePropertyTranslations(property, translated[index]); cacheVisitorTranslation(property); });
+      changed = true;
     }catch(err){ console.warn('Automatic title translation failed:', err); }
   }
+  return changed;
 }
 async function aiAskProvider(query, items){
   const response = await aiFetchWithTimeout(AI_ENDPOINT, {
@@ -2441,10 +2479,11 @@ async function init(){
     if(locationsResult.status === 'fulfilled') LOCATION_DATA = locationsResult.value;
     fillWilayaSelects(); applyUrlFilters(); bindLocationControls();
 
-    // Follow the visitor's device language on first visit and translate dynamic
-    // property content before it is rendered. Saved/cached translations are
-    // reused, so the translation engine is only called for missing content.
-    await prepareVisitorPropertyTranslations();
+    // Cached translations are applied synchronously. Any missing automatic
+    // translation finishes in the background so a slow provider never holds
+    // the public page or its images behind the full-screen loader.
+    const isPropertyDetailPage = !!$('#propertyDetail');
+    const translationPromise = prepareVisitorPropertyTranslations();
 
     // Render data-dependent UI only after Supabase/local data has settled.
     // This prevents the homepage hero from first showing a partial/fallback set
@@ -2458,6 +2497,15 @@ async function init(){
     initLatestIntentScrollMotion();
     initPropertyAI();
     initPropertyDetail();
+    translationPromise.then(changed=>{
+      if(!changed) return;
+      if(isPropertyDetailPage) initPropertyDetail();
+      else {
+        initListings();
+        initHeroSlider();
+        initHomePropertyShowcases();
+      }
+    }).catch(err=>console.warn('Background property translation failed:', err));
     await initAdmin();
     if($('#adminList')){ renderAdminList(); fillAdminStats(); }
   } finally {
