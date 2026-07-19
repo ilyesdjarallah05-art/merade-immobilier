@@ -1,0 +1,6 @@
+project_id = "merade-immobilier"
+
+[functions.contact-telegram]
+verify_jwt = false
+entrypoint = "./functions/contact-telegram/index.js"
+

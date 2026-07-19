@@ -416,6 +416,33 @@
     const raw = clean(name).toLowerCase().replace(/[^a-z0-9._-]+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'');
     return raw || `file-${Date.now()}.jpg`;
   }
+  async function optimizePropertyPhoto(file){
+    if(!file || !/^image\/(jpeg|png|webp)$/i.test(file.type || '') || typeof createImageBitmap !== 'function') return file;
+    let bitmap;
+    try{
+      try{ bitmap = await createImageBitmap(file, { imageOrientation:'from-image' }); }
+      catch{ bitmap = await createImageBitmap(file); }
+      const maxEdge = 1600;
+      const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
+      if(scale === 1 && file.type === 'image/webp' && file.size <= 450 * 1024) return file;
+      const width = Math.max(1, Math.round(bitmap.width * scale));
+      const height = Math.max(1, Math.round(bitmap.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext('2d');
+      if(!context) return file;
+      context.drawImage(bitmap, 0, 0, width, height);
+      const blob = await new Promise(resolve=>canvas.toBlob(resolve, 'image/webp', .76));
+      if(!blob || blob.type !== 'image/webp' || (scale === 1 && blob.size >= file.size)) return file;
+      const baseName = clean(file.name).replace(/\.[^.]+$/,'') || `property-${Date.now()}`;
+      return new File([blob], `${baseName}.webp`, { type:'image/webp', lastModified:file.lastModified || Date.now() });
+    }catch{
+      return file;
+    }finally{
+      bitmap?.close?.();
+    }
+  }
   async function uploadFile(file, folder='photos'){
     if(!enabled) throw new Error('Supabase is not configured.');
     if(!isSignedIn()) throw new Error('Admin login required before uploading files.');
@@ -425,7 +452,7 @@
     try{
       res = await fetch(storageUrl(`object/${encodeURIComponent(bucket)}/${encodePath(path)}`), {
         method: 'POST',
-        headers: { ...(await headers({}, { requireAuth: true })), 'Content-Type': file.type || 'application/octet-stream', 'Cache-Control': '3600' },
+        headers: { ...(await headers({}, { requireAuth: true })), 'Content-Type': file.type || 'application/octet-stream', 'Cache-Control': '31536000' },
         body: file
       });
     }catch(err){
@@ -438,7 +465,10 @@
   async function uploadFiles(files, folder='photos'){
     const list = Array.from(files || []);
     const out = [];
-    for(const file of list){ out.push(await uploadFile(file, folder)); }
+    for(const file of list){
+      const upload = folder === 'photos' ? await optimizePropertyPhoto(file) : file;
+      out.push(await uploadFile(upload, folder));
+    }
     return out;
   }
 

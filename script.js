@@ -279,14 +279,18 @@ function firstImage(p){
   return imageSrc(candidates.find(Boolean) || '');
 }
 function cssUrl(v){ return imageSrc(v).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n|\r/g,''); }
-function responsiveMediaUrl(value, mobileWidth = 760){
+function responsiveMediaUrl(value, targetWidth = 760){
   const source = imageSrc(value);
-  if(!source || !window.matchMedia?.('(max-width: 760px)').matches) return source;
+  if(!source) return source;
   try{
     const url = new URL(source, location.href);
     if(url.hostname === 'images.unsplash.com'){
-      url.searchParams.set('w', String(mobileWidth));
-      url.searchParams.set('q', '68');
+      const mobile = window.matchMedia?.('(max-width: 760px)').matches;
+      const requestedWidth = Math.max(240, Math.min(1800, Number(targetWidth) || 760));
+      const existingWidth = Number(url.searchParams.get('w') || 0);
+      const width = existingWidth > 0 ? Math.min(requestedWidth, existingWidth) : requestedWidth;
+      url.searchParams.set('w', String(width));
+      url.searchParams.set('q', mobile ? '64' : '70');
       url.searchParams.set('auto', 'format');
       url.searchParams.set('fit', 'crop');
       return url.href;
@@ -827,29 +831,60 @@ function initHeroSlider(){
   const slides = $$('.home-slide', slider);
   const dots = $$('[data-hero-dot]');
   let index = 0;
+  let navigationToken = 0;
   const loadSlideBackground = slide => {
-    if(!slide || slide.dataset.heroBgLoaded === 'yes') return;
-    slide.style.backgroundImage = `url('${cssUrl(slide.dataset.heroBg)}')`;
-    slide.dataset.heroBgLoaded = 'yes';
+    if(!slide) return Promise.resolve(false);
+    if(slide.dataset.heroBgLoaded === 'yes') return Promise.resolve(true);
+    if(slide._heroBackgroundPromise) return slide._heroBackgroundPromise;
+    const source = slide.dataset.heroBg;
+    slide._heroBackgroundPromise = new Promise(resolve => {
+      const preload = new Image();
+      preload.decoding = 'async';
+      let finished = false;
+      const apply = loaded => {
+        if(finished) return;
+        finished = true;
+        const background = `url('${cssUrl(source)}')`;
+        slide.style.backgroundImage = background;
+        slide.style.setProperty('--hero-bg', background);
+        slide.dataset.heroBgLoaded = 'yes';
+        slide.classList.toggle('hero-bg-error', !loaded);
+        resolve(loaded);
+      };
+      preload.onload = () => apply(true);
+      preload.onerror = () => apply(false);
+      preload.src = source;
+      if(preload.complete) apply(preload.naturalWidth > 0);
+    });
+    return slide._heroBackgroundPromise;
   };
   loadSlideBackground(slides[0]);
   loadSlideBackground(slides[1]);
-  if(!window.matchMedia?.('(max-width: 760px)').matches){
-    scheduleStagedLoads(slides.slice(2), loadSlideBackground, { delay:900, interval:420 });
-  }
-  function go(next){
-    index = (next + slides.length) % slides.length;
-    loadSlideBackground(slides[index]);
-    loadSlideBackground(slides[(index + 1) % slides.length]);
-    const direction = document.documentElement.dir === 'rtl' ? 1 : -1;
+  const mobile = window.matchMedia?.('(max-width: 760px)').matches;
+  scheduleStagedLoads(slides.slice(2), loadSlideBackground, mobile
+    ? { delay:1600, interval:650 }
+    : { delay:900, interval:420 });
+  const positionSlider = () => {
     const slideWidth = slides[0]?.offsetWidth || slider.parentElement?.clientWidth || window.innerWidth;
-    slider.style.transform = `translateX(${direction * index * slideWidth}px)`;
+    slider.style.transform = `translate3d(${-index * slideWidth}px,0,0)`;
+  };
+  async function go(next){
+    const targetIndex = (next + slides.length) % slides.length;
+    const token = ++navigationToken;
+    await loadSlideBackground(slides[targetIndex]);
+    if(token !== navigationToken) return;
+    index = targetIndex;
+    loadSlideBackground(slides[(index + 1) % slides.length]);
+    positionSlider();
     slides.forEach((slide,i)=>slide.classList.toggle('active', i === index));
     dots.forEach((dot,i)=>dot.classList.toggle('active', i === index));
   }
   $('#heroPrev') && ($('#heroPrev').onclick = () => go(index - 1));
   $('#heroNext') && ($('#heroNext').onclick = () => go(index + 1));
   dots.forEach(dot=>dot.onclick = () => go(Number(dot.dataset.heroDot)));
+  if(slider._heroResizeHandler) window.removeEventListener('resize', slider._heroResizeHandler);
+  slider._heroResizeHandler = () => requestAnimationFrame(positionSlider);
+  window.addEventListener('resize', slider._heroResizeHandler, { passive:true });
   if(slides.length > 1){
     HERO_AUTOPLAY_TIMER = setInterval(()=>go(index + 1), 5200);
     const hero = $('#homeHero');
@@ -1097,12 +1132,13 @@ function initVirtualTour(p){
 function buildPropertyGallery(p){
   const images = [...new Set(extractImageList([p.images, p.image, p.mainImage, p.coverImage, p.photo, p.photos, p.gallery]).map(imageSrc).filter(Boolean))];
   if(!images.length) return `<div class="detail-image detail-main-photo empty-photo"></div>`;
-  const previewLimit = window.matchMedia?.('(max-width: 760px)').matches ? 2 : 8;
+  const mobile = window.matchMedia?.('(max-width: 760px)').matches;
+  const previewLimit = mobile ? 2 : 8;
   const previewImages = images.slice(0, previewLimit);
-  const thumbs = previewImages.map((img,i)=>`<button class="gallery-thumb ${i===0?'active':''}" type="button" data-gallery-index="${i}" aria-label="Photo ${i+1}"><img ${deferredImageSourceAttribute(img)} alt="${safeText(propertyTitle(p) || 'Photo')} ${i+1}" loading="lazy" decoding="async" fetchpriority="low"></button>`).join('');
+  const thumbs = previewImages.map((img,i)=>`<button class="gallery-thumb ${i===0?'active':''}" type="button" data-gallery-index="${i}" aria-label="Photo ${i+1}"><img ${deferredImageSourceAttribute(responsiveMediaUrl(img, 280))} alt="${safeText(propertyTitle(p) || 'Photo')} ${i+1}" loading="lazy" decoding="async" fetchpriority="low"></button>`).join('');
   const remaining = Math.max(0, images.length - previewImages.length);
   const more = remaining ? `<button class="gallery-more" type="button" data-gallery-more="${previewImages.length}" aria-label="${safeText(extraText('detail.morePhotos'))}"><strong>+${remaining}</strong><span>${safeText(extraText('detail.morePhotos'))}</span></button>` : '';
-  return `<div class="detail-image detail-main-photo" id="detailMainPhoto" role="button" tabindex="0" aria-label="Open photo gallery"><img id="detailMainImage" src="${images[0]}" alt="${safeText(propertyTitle(p))}" data-gallery-index="0" decoding="async" fetchpriority="high"></div>${images.length > 1 ? `<div class="gallery">${thumbs}${more}</div>` : ''}`;
+  return `<div class="detail-image detail-main-photo" id="detailMainPhoto" role="button" tabindex="0" aria-label="Open photo gallery"><img id="detailMainImage" src="${responsiveMediaUrl(images[0], mobile ? 960 : 1600)}" alt="${safeText(propertyTitle(p))}" data-gallery-index="0" decoding="async" fetchpriority="high"></div>${images.length > 1 ? `<div class="gallery">${thumbs}${more}</div>` : ''}`;
 }
 function initPropertyGallery(images){
   images = [...new Set((images || []).map(imageSrc).filter(Boolean))];
@@ -1111,19 +1147,20 @@ function initPropertyGallery(images){
   if(!main || !mainBox || !images.length) return;
   const gallery = $('.gallery');
   if(gallery) initDeferredImages(gallery, { root:gallery, rootMargin:'0px 75%' });
+  const mainImageSource = source => responsiveMediaUrl(source, window.matchMedia?.('(max-width: 760px)').matches ? 960 : 1600);
   let current = 0;
   let swapToken = 0;
   const preloadNeighbors = index => {
     [index - 1,index + 1].forEach(nextIndex => {
       const preload = new Image();
       preload.decoding = 'async';
-      preload.src = images[(nextIndex + images.length) % images.length];
+      preload.src = mainImageSource(images[(nextIndex + images.length) % images.length]);
     });
   };
   function setCurrent(index){
     current = (index + images.length) % images.length;
     const token = ++swapToken;
-    const source = images[current];
+    const source = mainImageSource(images[current]);
     main.classList.add('is-loading');
     const preload = new Image();
     preload.decoding = 'async';
@@ -1227,9 +1264,53 @@ function initDescriptionToggles(){
 
 function initContactForm(){
   const form = $('#contactForm'); if(!form) return;
-  form.addEventListener('submit', e=>{ e.preventDefault(); showToast(t('contact.sent')); form.reset(); });
+  const endpointBase = clean(window.MeradeDB?.baseUrl || window.MERADE_SUPABASE?.url).replace(/\/$/,'');
+  const publicKey = clean(window.MERADE_SUPABASE?.anonKey || window.MERADE_SUPABASE?.publishableKey);
+  const subjectFromUrl = new URL(location.href).searchParams.get('subject');
+  if(['buy','rent','sell','visit'].includes(subjectFromUrl || '')) form.elements.subject.value = subjectFromUrl;
+  form.addEventListener('submit', async e=>{
+    e.preventDefault();
+    if(!form.reportValidity()) return;
+    const button = form.querySelector('button[type="submit"]');
+    const originalLabel = button?.textContent || t('contact.send');
+    const controller = new AbortController();
+    const timeout = setTimeout(()=>controller.abort(), 12000);
+    if(button){ button.disabled = true; button.textContent = t('contact.sending'); }
+    form.setAttribute('aria-busy','true');
+    try{
+      if(!endpointBase || !publicKey) throw new Error('Contact service is not configured.');
+      const selectedSubject = form.elements.subject.selectedOptions?.[0]?.textContent || form.elements.subject.value;
+      const response = await fetch(`${endpointBase}/functions/v1/contact-telegram`, {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', apikey:publicKey },
+        body:JSON.stringify({
+          name:form.elements.name.value,
+          phone:form.elements.phone.value,
+          subject:selectedSubject,
+          subjectCode:form.elements.subject.value,
+          message:form.elements.message.value,
+          company:form.elements.company.value,
+          language:currentLang(),
+          page:location.href
+        }),
+        signal:controller.signal
+      });
+      const result = await response.json().catch(()=>null);
+      if(!response.ok || !result?.ok) throw new Error(result?.error || `Contact service error ${response.status}`);
+      showToast(t('contact.sent'));
+      form.reset();
+      if(['buy','rent','sell','visit'].includes(subjectFromUrl || '')) form.elements.subject.value = subjectFromUrl;
+    }catch(err){
+      console.error('Contact form delivery failed:', err);
+      showToast(t('contact.failed'));
+    }finally{
+      clearTimeout(timeout);
+      form.removeAttribute('aria-busy');
+      if(button){ button.disabled = false; button.textContent = originalLabel; }
+    }
+  });
 }
-function showToast(msg){ const old = $('.toast'); if(old) old.remove(); const tdiv = document.createElement('div'); tdiv.className='toast'; tdiv.textContent = msg; document.body.appendChild(tdiv); setTimeout(()=>tdiv.remove(),3600); }
+function showToast(msg){ const old = $('.toast'); if(old) old.remove(); const tdiv = document.createElement('div'); tdiv.className='toast'; tdiv.setAttribute('role','status'); tdiv.setAttribute('aria-live','polite'); tdiv.textContent = msg; document.body.appendChild(tdiv); setTimeout(()=>tdiv.remove(),3600); }
 
 function ensureAdminHelpers(){
   const form = $('#propertyForm'); if(!form) return;

@@ -142,6 +142,23 @@ The key inside `supabase-config.js` is a public frontend key. That is normal.
 
 Never put a `service_role` key or `secret` key inside website files.
 
+## Telegram contact form
+
+The public contact form sends through the server-side `contact-telegram` Supabase Edge Function. Bot credentials belong only in Supabase Edge Function Secrets; never paste them into the frontend configuration.
+
+Setup and deployment instructions:
+
+```txt
+TELEGRAM-FORM-SETUP.md
+```
+
+## Property image optimization
+
+- Unsplash images are requested at the size needed by each card, slider, thumbnail, or phone detail view, using automatic modern image formatting.
+- New normal property photos selected in the admin are resized to a maximum 1600px edge and converted to WebP in the browser before upload when that produces a smaller file.
+- 360 panorama uploads are preserved at their original dimensions so the virtual tour is not damaged.
+- Timestamped Storage objects use a one-year browser cache lifetime.
+
 
 ## Fix included in this version
 

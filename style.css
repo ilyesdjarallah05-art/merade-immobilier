@@ -2582,6 +2582,16 @@ body.home-page{overflow-x:clip!important}
   scroll-snap-align:start
 }
 .gallery-more strong{font-size:1.18rem}.gallery-more span{font-size:.66rem;font-weight:800}
+.form-trap{
+  position:absolute!important;
+  left:-10000px!important;
+  width:1px!important;
+  height:1px!important;
+  overflow:hidden!important;
+  opacity:0!important;
+  pointer-events:none!important
+}
+#contactForm button[type="submit"]:disabled{cursor:wait;opacity:.68}
 @media(max-width:760px){
   body:not(.home-page):not(.admin-body)::before,
   body:not(.home-page):not(.admin-body)::after{
@@ -2695,6 +2705,23 @@ body.home-page{overflow-x:clip!important}
   .home-page .brand-mark,
   .home-page .language-select{box-shadow:none!important}
   .home-page .hero-property-card h1{text-shadow:none!important}
+}
+
+/* v48 — reliable hero slides in RTL/mobile and safer large-screen copy inset */
+.home-page .home-slider{direction:ltr!important}
+.home-page .home-slide::before{
+  background-image:var(--hero-bg,none)!important
+}
+html[dir="rtl"] .home-page .home-slide-content{direction:rtl}
+@media(min-width:1201px){
+  .home-page .hero-scroll-scene .home-slide-content{
+    padding-inline:clamp(78px,6.4vw,118px)!important
+  }
+}
+@media(max-width:760px){
+  .home-page .home-slide.hero-bg-error::before{
+    background-image:linear-gradient(135deg,#343434,#0c0c0c)!important
+  }
 }
 
 /* v23 — simple modern-luxury typography */
