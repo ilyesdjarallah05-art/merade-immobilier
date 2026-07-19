@@ -276,6 +276,21 @@ function firstImage(p){
   return imageSrc(candidates.find(Boolean) || '');
 }
 function cssUrl(v){ return imageSrc(v).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n|\r/g,''); }
+function responsiveMediaUrl(value, mobileWidth = 760){
+  const source = imageSrc(value);
+  if(!source || !window.matchMedia?.('(max-width: 760px)').matches) return source;
+  try{
+    const url = new URL(source, location.href);
+    if(url.hostname === 'images.unsplash.com'){
+      url.searchParams.set('w', String(mobileWidth));
+      url.searchParams.set('q', '68');
+      url.searchParams.set('auto', 'format');
+      url.searchParams.set('fit', 'crop');
+      return url.href;
+    }
+  }catch{}
+  return source;
+}
 function propertyUrl(id){ return `${ROOT}pages/property.html?id=${encodeURIComponent(id)}`; }
 function langLocale(){ return currentLang()==='ar' ? 'ar-DZ' : currentLang()==='fr' ? 'fr-DZ' : 'en-DZ'; }
 function formatPrice(p){ const n = Number(String(p||'').replace(/\s/g,'')); return Number.isNaN(n) ? safeText(p) : new Intl.NumberFormat(langLocale()).format(n); }
@@ -517,7 +532,17 @@ function bindLocationControls(){
 
 function initNav(){
   const nav = $('#nav');
-  if(nav) window.addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>30),{passive:true});
+  if(nav){
+    let previousScrolled = null;
+    const updateNav = () => {
+      const scrolled = scrollY > 30;
+      if(scrolled === previousScrolled) return;
+      previousScrolled = scrolled;
+      nav.classList.toggle('scrolled', scrolled);
+    };
+    window.addEventListener('scroll', updateNav, {passive:true});
+    updateNav();
+  }
   const menu = $('#menuBtn');
   const links = $('#navLinks');
   if(menu && links) menu.addEventListener('click',()=>{
@@ -622,7 +647,7 @@ function buildCard(p){
   ].filter(Boolean).map(m=>`<span>${cardIcon(m.icon)}${m.text}</span>`).join('');
   return `<article class="property-card reveal ${has360 ? 'has-360' : ''}" data-category="${safeText(p.category)}" data-status="${safeText(p.status)}" data-wilaya="${safeText(p.wilaya)}" data-commune="${safeText(p.commune)}">
     <a href="${propertyUrl(p.id)}" class="prop-media" aria-label="${safeText(t('card.details'))}">
-      ${img ? `<img src="${img}" alt="${safeText(propertyTitle(p))}" loading="lazy">` : '<div class="no-img"></div>'}
+      ${img ? `<img src="${safeText(responsiveMediaUrl(img, 560))}" alt="${safeText(propertyTitle(p))}" loading="lazy" decoding="async">` : '<div class="no-img"></div>'}
       <span class="badge ${p.status==='rent'?'rent':p.status==='new'?'new':''}">${safeText(statusTypeLabel(p))}</span>
       ${has360 ? `<span class="tour-pill" aria-label="${safeText(t('card.tour'))}">${safeText(t('card.tour'))}</span>` : ''}
       <span class="explore-dot">${safeText(t('card.details'))} →</span>
@@ -694,12 +719,12 @@ function heroSliderProperties(){
   window.__meradeHeroDebug = { mode:'fallback_no_admin_selection', count:fallback.length, selectedInDatabase:0, items:fallback.map(p=>({id:p.id,title:p.title,heroFeatured:p.heroFeatured,heroOrder:p.heroOrder,image:firstImage(p)})) };
   return fallback;
 }
-function heroBackgroundImage(p){
-  const img = firstImage(p);
-  return cssUrl(img || 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1800&q=80');
+function heroBackgroundSource(p){
+  const img = firstImage(p) || 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1800&q=80';
+  return responsiveMediaUrl(img, 960);
 }
 function buildHeroSlide(p, index){
-  const img = heroBackgroundImage(p);
+  const img = heroBackgroundSource(p);
   const price = propertyPriceText(p);
   const roomsValue = p.bedrooms || p.rooms;
   const areaValue = p.surface || p.landSurface;
@@ -708,7 +733,7 @@ function buildHeroSlide(p, index){
     p.bathrooms && `${cardIcon('bath')}<span>${safeText(p.bathrooms)}</span>`,
     areaValue && `${cardIcon('area')}<span>${safeText(areaValue)} ${safeText(t('card.surface'))}</span>`
   ].filter(Boolean).map(x=>`<span>${x}</span>`).join('');
-  return `<article class="home-slide ${index===0?'active':''}" style="background-image:url('${img}')">
+  return `<article class="home-slide ${index===0?'active':''}" data-hero-bg="${safeText(img)}">
     <div class="container home-slide-content">
       <a class="hero-property-card" href="${propertyUrl(p.id)}">
         <p class="hero-status">${safeText(statusTypeLabel(p))}</p>
@@ -732,8 +757,17 @@ function initHeroSlider(){
   const slides = $$('.home-slide', slider);
   const dots = $$('[data-hero-dot]');
   let index = 0;
+  const loadSlideBackground = slide => {
+    if(!slide || slide.dataset.heroBgLoaded === 'yes') return;
+    slide.style.backgroundImage = `url('${cssUrl(slide.dataset.heroBg)}')`;
+    slide.dataset.heroBgLoaded = 'yes';
+  };
+  loadSlideBackground(slides[0]);
+  loadSlideBackground(slides[1]);
   function go(next){
     index = (next + slides.length) % slides.length;
+    loadSlideBackground(slides[index]);
+    loadSlideBackground(slides[(index + 1) % slides.length]);
     const direction = document.documentElement.dir === 'rtl' ? 1 : -1;
     const slideWidth = slides[0]?.offsetWidth || slider.parentElement?.clientWidth || window.innerWidth;
     slider.style.transform = `translateX(${direction * index * slideWidth}px)`;
@@ -763,6 +797,7 @@ function initHeroScrollScene(){
 
   const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   let frame = 0;
+  let previousRenderKey = '';
   const render = () => {
     frame = 0;
     if(reducedMotion){
@@ -778,10 +813,17 @@ function initHeroScrollScene(){
     const copyOpacity = 1 - clampUnit(progress / .34);
     const controlsOpacity = 1 - clampUnit(progress / .26);
     const searchOpacity = 1 - clampUnit((progress - .52) / .30);
-    hero.style.setProperty('--hero-copy-opacity', copyOpacity.toFixed(3));
-    hero.style.setProperty('--hero-copy-shift', `${Math.round(progress * -44)}px`);
-    hero.style.setProperty('--hero-controls-opacity', controlsOpacity.toFixed(3));
-    hero.style.setProperty('--hero-search-opacity', searchOpacity.toFixed(3));
+    const copyValue = copyOpacity.toFixed(2);
+    const shiftValue = `${Math.round(progress * -44)}px`;
+    const controlsValue = controlsOpacity.toFixed(2);
+    const searchValue = searchOpacity.toFixed(2);
+    const renderKey = `${copyValue}|${shiftValue}|${controlsValue}|${searchValue}`;
+    if(renderKey === previousRenderKey) return;
+    previousRenderKey = renderKey;
+    hero.style.setProperty('--hero-copy-opacity', copyValue);
+    hero.style.setProperty('--hero-copy-shift', shiftValue);
+    hero.style.setProperty('--hero-controls-opacity', controlsValue);
+    hero.style.setProperty('--hero-search-opacity', searchValue);
     hero.classList.toggle('hero-search-hidden', searchOpacity < .05);
   };
   const requestRender = () => {
@@ -828,16 +870,21 @@ function initScrollInkTitles(){
       node.replaceWith(fragment);
     });
     target.classList.add('scroll-ink-title');
-    return { target, words: $$('.scroll-ink-word', target), activeWords:-1 };
+    return { target, words: $$('.scroll-ink-word', target), activeWords:-1, top:0 };
   });
+
+  const refreshOffsets = () => entries.forEach(entry => {
+    entry.top = entry.target.getBoundingClientRect().top + window.scrollY;
+  });
+  refreshOffsets();
 
   let frame = 0;
   const render = () => {
     frame = 0;
     entries.forEach(entry => {
-      const { target, words } = entry;
-      const bounds = target.getBoundingClientRect();
-      const progress = reducedMotion ? 1 : clampUnit((window.innerHeight * .88 - bounds.top) / (window.innerHeight * .48));
+      const { words } = entry;
+      const boundsTop = entry.top - window.scrollY;
+      const progress = reducedMotion ? 1 : clampUnit((window.innerHeight * .88 - boundsTop) / (window.innerHeight * .48));
       const activeWords = Math.ceil(progress * words.length);
       if(activeWords === entry.activeWords) return;
       entry.activeWords = activeWords;
@@ -848,7 +895,7 @@ function initScrollInkTitles(){
     if(!frame) frame = requestAnimationFrame(render);
   };
   window.addEventListener('scroll', requestRender, { passive:true });
-  window.addEventListener('resize', requestRender, { passive:true });
+  window.addEventListener('resize', () => { refreshOffsets(); requestRender(); }, { passive:true });
   render();
 }
 function initListings(){
@@ -1500,7 +1547,7 @@ function buildLatestImageCard(p, index){
   const price = propertyPriceText(p);
   return `<a class="latest-image-card ${index % 4 === 0 || index % 4 === 3 ? 'is-tall' : ''}" href="${propertyUrl(p.id)}" aria-label="${safeText(title)}">
     <span class="latest-image-media">
-      <img src="${safeText(img)}" alt="${safeText(title)}" loading="lazy">
+      <img src="${safeText(responsiveMediaUrl(img, 760))}" alt="${safeText(title)}" loading="lazy" decoding="async">
       <span class="latest-image-reveal">${safeText(extraText('home.latest.more'))}</span>
     </span>
     <span class="latest-image-info">
@@ -1555,6 +1602,7 @@ function initLatestGalleryMotion(){
     clearDesktopCard(pair);
   });
   let frame = 0;
+  let motionNear = true;
   const render = () => {
     frame = 0;
     const cards = $$('.latest-image-card', gallery);
@@ -1568,27 +1616,21 @@ function initLatestGalleryMotion(){
       });
       return;
     }
+    if(!motionNear) return;
     [...new Set(cards.map(card => card.closest('.latest-property-pair')).filter(Boolean))].forEach(clearDesktopCard);
     const focusPoint = window.innerHeight * .58;
     const radius = window.innerHeight * .68;
-    const updates = cards.map((card, index) => {
+    const updates = cards.map(card => {
       const bounds = card.getBoundingClientRect();
       const cardCenter = bounds.top + bounds.height / 2;
-      const strength = 1 - clampUnit(Math.abs(cardCenter - focusPoint) / radius);
-      const inlineClip = (1 - strength) * 19;
-      const blockClip = (1 - strength) * 44.5;
-      const firstInPair = index % 2 === 0;
-      const lowerAnchoredPair = Math.floor(index / 2) % 2 === 1;
-      const clip = lowerAnchoredPair
-        ? `${blockClip.toFixed(2)}% ${firstInPair ? inlineClip.toFixed(2) : '0'}% 0 ${firstInPair ? '0' : inlineClip.toFixed(2)}%`
-        : `0 ${firstInPair ? inlineClip.toFixed(2) : '0'}% ${blockClip.toFixed(2)}% ${firstInPair ? '0' : inlineClip.toFixed(2)}%`;
-      return { card, strength, clip };
+      const rawStrength = 1 - clampUnit(Math.abs(cardCenter - focusPoint) / radius);
+      const strength = Math.round(rawStrength * 40) / 40;
+      return { card, strength };
     });
-    updates.forEach(({ card, strength, clip }) => {
-      if(Math.abs(strength - (card._latestMobileStrength ?? -1)) < .008) return;
+    updates.forEach(({ card, strength }) => {
+      if(strength === card._latestMobileStrength) return;
       card._latestMobileStrength = strength;
       card.style.setProperty('--latest-mobile-expand', strength.toFixed(3));
-      card.style.setProperty('--latest-mobile-clip', clip);
       card.classList.toggle('is-scroll-expanded', strength > .62);
     });
   };
@@ -1597,6 +1639,13 @@ function initLatestGalleryMotion(){
   };
   window.addEventListener('scroll', requestRender, { passive:true });
   window.addEventListener('resize', requestRender, { passive:true });
+  if('IntersectionObserver' in window){
+    const observer = new IntersectionObserver(entries => {
+      motionNear = entries.some(entry => entry.isIntersecting);
+      if(motionNear) requestRender();
+    }, { rootMargin:'70% 0px' });
+    observer.observe(gallery);
+  }
   render();
 }
 function initLatestIntentScrollMotion(){
@@ -1606,6 +1655,7 @@ function initLatestIntentScrollMotion(){
   const buttons = $$('.latest-intent-btn', section);
   let frame = 0;
   let previousActiveIndex = -2;
+  let motionNear = true;
   const render = () => {
     frame = 0;
     const mobile = window.matchMedia('(max-width: 760px)').matches;
@@ -1613,6 +1663,7 @@ function initLatestIntentScrollMotion(){
       buttons.forEach(button => button.classList.remove('is-scroll-active','is-scroll-passed'));
       return;
     }
+    if(!motionNear) return;
     const bounds = section.getBoundingClientRect();
     const start = window.innerHeight * .82;
     const end = -Math.min(bounds.height * .32, 170);
@@ -1631,6 +1682,13 @@ function initLatestIntentScrollMotion(){
   };
   window.addEventListener('scroll', requestRender, { passive:true });
   window.addEventListener('resize', requestRender, { passive:true });
+  if('IntersectionObserver' in window){
+    const observer = new IntersectionObserver(entries => {
+      motionNear = entries.some(entry => entry.isIntersecting);
+      if(motionNear) requestRender();
+    }, { rootMargin:'65% 0px' });
+    observer.observe(section);
+  }
   render();
 }
 function initHomePropertyShowcases(){

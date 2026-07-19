@@ -1214,6 +1214,135 @@ html[lang="ar"] .home-page .home-bottom-card .title{
   letter-spacing:0!important
 }
 
+/* v43 — low-paint mobile rendering path */
+@media(max-width:760px){
+  body.home-page::before,
+  body.home-page::after{
+    content:none!important;
+    display:none!important;
+    animation:none!important
+  }
+  .home-page .hero-sticky-stage,
+  .home-page .home-slider{
+    contain:layout paint
+  }
+  .home-page .home-slider{transition-duration:.52s!important}
+  .home-page .home-slide-content,
+  .home-page .hero-nav,
+  .home-page .hero-dots-wrap,
+  .home-page .hero-search-wrap,
+  .home-page .latest-image-card,
+  .home-page .latest-image-media,
+  .home-page .latest-intent-btn{
+    will-change:auto!important
+  }
+  .home-page .home-slide:not(.active) .home-slide-content{
+    opacity:1!important;
+    transform:none!important
+  }
+  .home-page img{
+    filter:none!important;
+    image-rendering:auto
+  }
+  .home-page .nav,
+  .home-page .nav.scrolled,
+  .home-page .nav-links,
+  .home-page .menu-btn,
+  .home-page .section-alt,
+  .home-page .home-search-bar,
+  .home-page .hero-intent-btn,
+  .home-page .property-card,
+  .home-page .property-card .badge,
+  .home-page .about-modern-grid,
+  .home-page .stats,
+  .home-page .service,
+  .home-page .glass,
+  .home-page .btn-outline,
+  .home-page .must-see-category-tabs,
+  .home-page .latest-image-reveal,
+  .home-page .home-bottom-card,
+  .home-page .ai-panel,
+  .home-page .ai-nudge{
+    -webkit-backdrop-filter:none!important;
+    backdrop-filter:none!important
+  }
+  .home-page .latest-image-card,
+  .home-page .latest-image-card.is-tall{
+    --latest-mobile-expand:0;
+    width:94%!important;
+    height:auto!important;
+    transition:none!important
+  }
+  .home-page .latest-image-media,
+  .home-page .latest-image-card.is-tall .latest-image-media{
+    position:relative;
+    height:370px!important;
+    min-height:370px!important;
+    overflow:hidden;
+    clip-path:none!important;
+    contain:paint;
+    transition:none!important
+  }
+  .home-page .latest-image-media::before,
+  .home-page .latest-image-media::after{
+    content:"";
+    position:absolute;
+    z-index:2;
+    pointer-events:none;
+    background:#f4f4f1;
+    will-change:transform;
+    transition:none
+  }
+  .home-page .latest-image-media::before{
+    left:-1px;
+    right:-1px;
+    bottom:-1px;
+    height:45%;
+    transform:scaleY(calc(1 - var(--latest-mobile-expand)));
+    transform-origin:center bottom
+  }
+  .home-page .latest-image-media::after{
+    top:-1px;
+    right:-1px;
+    bottom:-1px;
+    width:20%;
+    transform:scaleX(calc(1 - var(--latest-mobile-expand)));
+    transform-origin:right center
+  }
+  .home-page .latest-property-pair:nth-child(even) .latest-image-media::before{
+    top:-1px;
+    bottom:auto;
+    transform-origin:center top
+  }
+  .home-page .latest-image-card:nth-child(even) .latest-image-media::after{
+    left:-1px;
+    right:auto;
+    transform-origin:left center
+  }
+  .home-page .latest-image-card img{
+    width:100%;
+    height:370px;
+    object-fit:cover;
+    transform:none!important
+  }
+  .home-page .latest-image-reveal{
+    background:#d1d1ce!important;
+    box-shadow:none!important
+  }
+  .home-page .latest-intent-btn{
+    box-shadow:none!important;
+    transition:transform .28s ease,background-color .28s ease,color .28s ease,border-color .28s ease!important
+  }
+  .home-page .latest-intent-btn.is-scroll-active{box-shadow:none!important}
+  .home-page .must-see-section .property-card,
+  .home-page .service,
+  .home-page .glass,
+  .home-page .about-modern-grid,
+  .home-page .home-bottom-card{
+    box-shadow:0 8px 22px rgba(0,0,0,.07)!important
+  }
+}
+
 /* v30 — premium hero scroll scene, intent actions and scroll-ink headings */
 html:has(body.home-page),
 body.home-page{overflow-x:clip!important}
