@@ -1214,6 +1214,36 @@ html[lang="ar"] .home-page .home-bottom-card .title{
   letter-spacing:0!important
 }
 
+/* v44 — section-level phone performance guards */
+@media(max-width:760px){
+  .home-page .home-showcase.hero-scroll-finished .hero-sticky-stage{
+    visibility:hidden;
+    pointer-events:none
+  }
+  .home-page .reveal,
+  .home-page .reveal.visible{
+    transform:none!important;
+    transition-property:opacity!important;
+    transition-duration:.22s!important;
+    transition-delay:0s!important
+  }
+  .home-page .must-see-section .property-card,
+  .home-page .must-see-section #listingsGrid .property-card,
+  .home-page .city-card,
+  .home-page .handpicked-card{
+    box-shadow:none!important
+  }
+  .home-page .must-see-section .property-card{
+    border-color:rgba(0,0,0,.12)!important
+  }
+  .home-page .handpicked-card,
+  .home-page .city-card{
+    content-visibility:auto
+  }
+  .home-page .handpicked-card{contain-intrinsic-size:86vw 218px}
+  .home-page .city-card{contain-intrinsic-size:82vw 190px}
+}
+
 /* v43 — low-paint mobile rendering path */
 @media(max-width:760px){
   body.home-page::before,
@@ -2488,6 +2518,21 @@ body.home-page{overflow-x:clip!important}
   .home-page .hero-property-card h1{line-height:1.12!important}
   html[lang="ar"] .home-page .hero-property-card h1{line-height:1.22!important}
   .brand span:last-child{letter-spacing:.055em}
+}
+
+/* v45 — final phone paint overrides (kept at the end of the visual cascade) */
+@media(max-width:760px){
+  .home-page .must-see-section .property-card,
+  .home-page .must-see-section #listingsGrid .property-card,
+  .home-page .must-see-category-tabs,
+  .home-page .must-see-category-tab.active{
+    box-shadow:none!important
+  }
+  .home-page .must-see-section .property-card .prop-media img{
+    transform:none!important;
+    transition:none!important
+  }
+  .home-page .must-see-section .explore-dot{display:none!important}
 }
 
 /* v23 — simple modern-luxury typography */

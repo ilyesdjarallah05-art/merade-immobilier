@@ -291,6 +291,32 @@ function responsiveMediaUrl(value, mobileWidth = 760){
   }catch{}
   return source;
 }
+function deferredImageSourceAttribute(value){
+  const source = safeText(value);
+  return window.matchMedia?.('(max-width: 760px)').matches
+    ? `data-deferred-src="${source}"`
+    : `src="${source}"`;
+}
+function initDeferredImages(container, { root = null, rootMargin = '70% 0px' } = {}){
+  const images = $$('img[data-deferred-src]', container || document);
+  if(!images.length) return;
+  const load = image => {
+    const source = image.dataset.deferredSrc;
+    if(!source) return;
+    image.src = source;
+    delete image.dataset.deferredSrc;
+  };
+  if(!('IntersectionObserver' in window)){
+    images.forEach(load);
+    return;
+  }
+  const observer = new IntersectionObserver(entries => entries.forEach(entry => {
+    if(!entry.isIntersecting) return;
+    load(entry.target);
+    observer.unobserve(entry.target);
+  }), { root, rootMargin, threshold:.01 });
+  images.forEach(image => observer.observe(image));
+}
 function propertyUrl(id){ return `${ROOT}pages/property.html?id=${encodeURIComponent(id)}`; }
 function langLocale(){ return currentLang()==='ar' ? 'ar-DZ' : currentLang()==='fr' ? 'fr-DZ' : 'en-DZ'; }
 function formatPrice(p){ const n = Number(String(p||'').replace(/\s/g,'')); return Number.isNaN(n) ? safeText(p) : new Intl.NumberFormat(langLocale()).format(n); }
@@ -647,7 +673,7 @@ function buildCard(p){
   ].filter(Boolean).map(m=>`<span>${cardIcon(m.icon)}${m.text}</span>`).join('');
   return `<article class="property-card reveal ${has360 ? 'has-360' : ''}" data-category="${safeText(p.category)}" data-status="${safeText(p.status)}" data-wilaya="${safeText(p.wilaya)}" data-commune="${safeText(p.commune)}">
     <a href="${propertyUrl(p.id)}" class="prop-media" aria-label="${safeText(t('card.details'))}">
-      ${img ? `<img src="${safeText(responsiveMediaUrl(img, 560))}" alt="${safeText(propertyTitle(p))}" loading="lazy" decoding="async">` : '<div class="no-img"></div>'}
+      ${img ? `<img ${deferredImageSourceAttribute(responsiveMediaUrl(img, 560))} alt="${safeText(propertyTitle(p))}" loading="lazy" decoding="async">` : '<div class="no-img"></div>'}
       <span class="badge ${p.status==='rent'?'rent':p.status==='new'?'new':''}">${safeText(statusTypeLabel(p))}</span>
       ${has360 ? `<span class="tour-pill" aria-label="${safeText(t('card.tour'))}">${safeText(t('card.tour'))}</span>` : ''}
       <span class="explore-dot">${safeText(t('card.details'))} →</span>
@@ -664,6 +690,7 @@ function buildCard(p){
 function renderCards(container, properties){
   if(!container) return;
   container.innerHTML = properties.length ? properties.map(buildCard).join('') : `<div class="empty">${safeText(t('empty'))}</div>`;
+  initDeferredImages(container);
   initReveal(); initCardMotion();
 }
 
@@ -817,9 +844,11 @@ function initHeroScrollScene(){
     const shiftValue = `${Math.round(progress * -44)}px`;
     const controlsValue = controlsOpacity.toFixed(2);
     const searchValue = searchOpacity.toFixed(2);
-    const renderKey = `${copyValue}|${shiftValue}|${controlsValue}|${searchValue}`;
+    const finished = progress > .985;
+    const renderKey = `${copyValue}|${shiftValue}|${controlsValue}|${searchValue}|${finished}`;
     if(renderKey === previousRenderKey) return;
     previousRenderKey = renderKey;
+    hero.classList.toggle('hero-scroll-finished', finished);
     hero.style.setProperty('--hero-copy-opacity', copyValue);
     hero.style.setProperty('--hero-copy-shift', shiftValue);
     hero.style.setProperty('--hero-controls-opacity', controlsValue);
@@ -1495,6 +1524,7 @@ function propertyCityHaystack(p){
 function initHomeCities(){
   const track = $('#cityTrack');
   if(!track) return;
+  initDeferredImages(track, { root:track, rootMargin:'0px 75%' });
   if(!track.dataset.scrollBound){
     $$('[data-city-scroll]').forEach(btn => btn.addEventListener('click', () => {
       const direction = btn.dataset.cityScroll === 'next' ? 1 : -1;
@@ -1520,7 +1550,7 @@ function propertySortNewest(list){
   return uniqueProperties(list).sort((a,b)=>new Date(b.createdAt || b.created_at || 0) - new Date(a.createdAt || a.created_at || 0));
 }
 function buildOverlayPropertyCard(p, extraClass = ''){
-  const img = firstImage(p) || 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1200&q=74';
+  const img = responsiveMediaUrl(firstImage(p) || 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1200&q=74', 720);
   const price = propertyPriceText(p);
   const roomsValue = p.bedrooms || p.rooms;
   const areaValue = p.surface || p.landSurface;
@@ -1529,7 +1559,7 @@ function buildOverlayPropertyCard(p, extraClass = ''){
     p.bathrooms && `${cardIcon('bath')}<span>${safeText(p.bathrooms)}</span>`,
     areaValue && `${cardIcon('area')}<span>${safeText(areaValue)} ${safeText(t('card.surface'))}</span>`
   ].filter(Boolean).map(x=>`<span>${x}</span>`).join('');
-  return `<a class="overlay-prop-card ${extraClass}" href="${propertyUrl(p.id)}" style="--bg:url('${cssUrl(img)}')">
+  return `<a class="overlay-prop-card ${extraClass}" href="${propertyUrl(p.id)}" data-deferred-bg="${safeText(img)}">
     <span class="overlay-shade"></span>
     ${hasVirtualTour(p) ? `<span class="overlay-tour-pill">${safeText(t('card.tour'))}</span>` : ''}
     <span class="overlay-card-content">
@@ -1539,6 +1569,26 @@ function buildOverlayPropertyCard(p, extraClass = ''){
       ${meta ? `<em>${meta}</em>` : ''}
     </span>
   </a>`;
+}
+function initDeferredCardBackgrounds(root){
+  const cards = $$('[data-deferred-bg]', root);
+  if(!cards.length) return;
+  const load = card => {
+    const source = card.dataset.deferredBg;
+    if(!source) return;
+    card.style.setProperty('--bg', `url('${cssUrl(source)}')`);
+    delete card.dataset.deferredBg;
+  };
+  if(!('IntersectionObserver' in window)){
+    cards.forEach(load);
+    return;
+  }
+  const observer = new IntersectionObserver(entries => entries.forEach(entry => {
+    if(!entry.isIntersecting) return;
+    load(entry.target);
+    observer.unobserve(entry.target);
+  }), { root, rootMargin:'0px 75%', threshold:.01 });
+  cards.forEach(card => observer.observe(card));
 }
 function buildLatestImageCard(p, index){
   const img = firstImage(p) || 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1600&q=78';
@@ -1710,6 +1760,7 @@ function initHomePropertyShowcases(){
   if(handpickedBox){
     const handpicked = propertySortNewest(allProperties()).filter(p => p.featured || firstImage(p)).slice(0,10);
     handpickedBox.innerHTML = handpicked.length ? handpicked.map(p => buildOverlayPropertyCard(p, 'handpicked-card')).join('') : `<div class="empty">${safeText(t('empty'))}</div>`;
+    initDeferredCardBackgrounds(handpickedBox);
     if(!handpickedBox.dataset.scrollBound){
       $$('[data-handpicked-scroll]').forEach(btn => btn.addEventListener('click', () => {
         const direction = btn.dataset.handpickedScroll === 'next' ? 1 : -1;
