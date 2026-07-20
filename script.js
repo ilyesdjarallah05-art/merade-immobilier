@@ -216,7 +216,12 @@ function hiddenDefaultIds(){ try { return JSON.parse(localStorage.getItem(HIDDEN
 function setHiddenDefaultIds(items){ localStorage.setItem(HIDDEN_DEFAULTS_KEY, JSON.stringify(Array.from(new Set(items)))); }
 function defaultProperties(){ const hidden = new Set(hiddenDefaultIds()); return MERADE_DEFAULT_PROPERTIES.filter(p => !hidden.has(p.id)); }
 function localProperties(){ return [...savedProperties(), ...defaultProperties()].sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0)); }
-function allProperties(){ return (Array.isArray(REMOTE_PROPERTIES) ? REMOTE_PROPERTIES : localProperties()).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0)); }
+function allProperties(){
+  const remoteHasListings = Array.isArray(REMOTE_PROPERTIES) && REMOTE_PROPERTIES.length > 0;
+  const emptyAdminDatabase = Array.isArray(REMOTE_PROPERTIES) && isAdminScreen() && DB_STATUS === 'connected';
+  return (remoteHasListings || emptyAdminDatabase ? REMOTE_PROPERTIES : localProperties())
+    .sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
+}
 function isAdminScreen(){ return Boolean($('#adminList') || $('#loginScreen') || $('#adminApp')); }
 async function refreshAdminProperties(){
   if(!window.MeradeDB?.enabled || !window.MeradeDB?.isSignedIn?.()) return false;
@@ -1219,9 +1224,44 @@ function initPropertyDetail(){
   const description = propertyDescription(p);
   document.title = `${title} — Merade Immobilier`;
   const price = propertyPriceText(p);
-  const details = [
-    [t('detail.type'), catLabel(p.category)], [t('detail.status'), statusTypeLabel(p)], [t('detail.virtualTour'), hasVirtualTour(p) ? t('detail.tourStart') : ''], [t('detail.wilaya'), wilayaDisplay(p.wilaya)], [t('detail.commune'), p.commune], [t('detail.address'), p.address], [t('detail.price'), price], [t('detail.rentalPeriod'), rentalPeriodLabel(p)], [t('detail.surface'), p.surface && `${p.surface} ${t('card.surface')}`], [t('detail.land'), p.landSurface && `${p.landSurface} ${t('card.surface')}`], [t('detail.rooms'), p.rooms], [t('detail.bedrooms'), p.bedrooms], [t('detail.bathrooms'), p.bathrooms], [t('detail.floor'), p.floor], [t('detail.year'), p.yearBuilt], [t('detail.phone'), p.phone]
-  ].filter(([,v])=>clean(v)).map(([k,v])=>`<div class="detail-item"><small>${safeText(k)}</small><strong>${safeText(v)}</strong></div>`).join('');
+  const detailIcon = kind => {
+    const paths = {
+      type:'<path d="M4 10.5 12 4l8 6.5V20h-6v-6h-4v6H4Z"/>',
+      status:'<path d="M4 5h9l7 7-8 8-8-8Zm5 4h.01"/>',
+      tour:'<circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4c2.2 2.2 3.3 4.9 3.3 8S14.2 17.8 12 20c-2.2-2.2-3.3-4.9-3.3-8S9.8 6.2 12 4Z"/>',
+      location:'<path d="M12 21s6-5.3 6-11a6 6 0 1 0-12 0c0 5.7 6 11 6 11Z"/><circle cx="12" cy="10" r="2"/>',
+      address:'<path d="M5 20V9l7-5 7 5v11M9 20v-6h6v6"/>',
+      price:'<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M16 12h2M7 6V4h10v2"/>',
+      calendar:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/>',
+      area:'<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>',
+      rooms:'<rect x="4" y="4" width="16" height="16" rx="1"/><path d="M12 4v16M4 12h8"/>',
+      bed:'<path d="M4 17v-6M20 17v-5a3 3 0 0 0-3-3h-5v5H4v3Zm0 0v3M20 17v3M4 14h16"/>',
+      bath:'<path d="M5 11h15l-1 5a4 4 0 0 1-4 3H9a4 4 0 0 1-4-3l-1-5h1Zm3 0V6a3 3 0 0 1 6 0v1"/>',
+      floor:'<path d="m4 9 8-5 8 5-8 5Zm0 5 8 5 8-5"/>',
+      phone:'<path d="M7 4 4 6c0 7.7 6.3 14 14 14l2-3-4-3-2 2a11 11 0 0 1-6-6l2-2Z"/>'
+    };
+    return `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${paths[kind] || paths.type}</svg>`;
+  };
+  const detailRows = [
+    {kind:'type',label:t('detail.type'),value:catLabel(p.category)},
+    {kind:'status',label:t('detail.status'),value:statusTypeLabel(p)},
+    {kind:'tour',label:t('detail.virtualTour'),value:hasVirtualTour(p) ? t('detail.tourStart') : ''},
+    {kind:'location',label:t('detail.wilaya'),value:wilayaDisplay(p.wilaya)},
+    {kind:'location',label:t('detail.commune'),value:p.commune},
+    {kind:'address',label:t('detail.address'),value:p.address},
+    {kind:'price',label:t('detail.price'),value:price},
+    {kind:'calendar',label:t('detail.rentalPeriod'),value:rentalPeriodLabel(p)},
+    {kind:'area',label:t('detail.surface'),value:p.surface && `${p.surface} ${t('card.surface')}`},
+    {kind:'area',label:t('detail.land'),value:p.landSurface && `${p.landSurface} ${t('card.surface')}`},
+    {kind:'rooms',label:t('detail.rooms'),value:p.rooms},
+    {kind:'bed',label:t('detail.bedrooms'),value:p.bedrooms},
+    {kind:'bath',label:t('detail.bathrooms'),value:p.bathrooms},
+    {kind:'floor',label:t('detail.floor'),value:p.floor},
+    {kind:'calendar',label:t('detail.year'),value:p.yearBuilt},
+    {kind:'phone',label:t('detail.phone'),value:p.phone}
+  ].filter(item=>clean(item.value));
+  const details = detailRows.map((item,index)=>`<div class="detail-item"><span class="detail-item-number">${String(index + 1).padStart(2,'0')}</span><span class="detail-item-icon">${detailIcon(item.kind)}</span><span class="detail-item-copy"><small>${safeText(item.label)}</small><strong>${safeText(item.value)}</strong></span></div>`).join('');
+  const propertyNumber = Math.max(1, allProperties().findIndex(item=>item.id === p.id) + 1);
   const features = propertyFeatures(p).filter(Boolean).map(propertyFeatureListItem).join('');
   const virtualTour = buildVirtualTourSection(p);
   wrap.innerHTML = `<div class="detail-grid detail-grid-v10">
@@ -1229,10 +1269,10 @@ function initPropertyDetail(){
       ${buildPropertyGallery(p)}
     </section>
     <aside class="detail-side glass">
-      <p class="eyebrow">${safeText(statusTypeLabel(p))}</p>
+      <p class="eyebrow detail-heading"><span class="detail-reference">#${String(propertyNumber).padStart(2,'0')}</span><span>${safeText(statusTypeLabel(p))}</span></p>
       <h1 class="title">${safeText(title)}</h1>
-      ${price ? `<p class="price detail-price">${price}</p>` : ''}
-      <p class="location detail-location">${[p.commune,wilayaDisplay(p.wilaya)].filter(Boolean).map(safeText).join(' · ')}</p>
+      ${price ? `<p class="price detail-price"><span class="detail-inline-icon">${detailIcon('price')}</span><span>${price}</span></p>` : ''}
+      <p class="location detail-location"><span class="detail-inline-icon">${detailIcon('location')}</span><span>${[p.commune,wilayaDisplay(p.wilaya)].filter(Boolean).map(safeText).join(' · ')}</span></p>
       <div class="detail-list">${details}</div>
       <div class="hero-cta"><a class="btn" href="${ROOT}pages/contact.html">${safeText(t('detail.visit'))}</a>${p.phone ? `<a class="btn-outline" href="tel:${safeText(p.phone)}">${safeText(t('detail.call'))}</a>` : ''}</div>
     </aside>
@@ -1562,6 +1602,23 @@ async function saveLocalProperty(prop){
   else { if(defaultProperties().some(p=>p.id === prop.id)) setHiddenDefaultIds([...hiddenDefaultIds(), prop.id]); saved.unshift(prop); }
   setSavedProperties(saved);
 }
+async function restorePropertyCatalogueIfNeeded(){
+  const restoreFlag = 'merade_catalogue_restored_2026_07';
+  if(localStorage.getItem(restoreFlag) === 'yes' || !window.MeradeDB?.enabled || !window.MeradeDB?.isSignedIn?.()) return false;
+  const current = Array.isArray(REMOTE_PROPERTIES) ? REMOTE_PROPERTIES : [];
+  const existingTitles = new Set(current.map(item=>clean(item.title).toLocaleLowerCase()));
+  const missing = MERADE_DEFAULT_PROPERTIES.filter(item=>!existingTitles.has(clean(item.title).toLocaleLowerCase()));
+  if(!missing.length){ localStorage.setItem(restoreFlag,'yes'); return false; }
+  const restored = [];
+  for(const item of missing){
+    const property = { ...item, id:undefined, translations:sourcePropertyTranslations(item) };
+    restored.push(await window.MeradeDB.insertProperty(property));
+  }
+  REMOTE_PROPERTIES = [...restored, ...current].sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
+  localStorage.setItem(restoreFlag,'yes');
+  await refreshAdminProperties();
+  return true;
+}
 async function initAdmin(){
   const loginScreen = $('#loginScreen'); const adminApp = $('#adminApp'); if(!loginScreen || !adminApp) return;
   ensureAdminHelpers(); renderAdminFeaturePicker(); bindTourBuilder(); renderImageManager(); renderTourBuilder();
@@ -1575,6 +1632,8 @@ async function initAdmin(){
     if(sessionRestored){
       localStorage.setItem(ADMIN_FLAG, 'yes');
       sessionStorage.removeItem(ADMIN_FLAG);
+      try{ await restorePropertyCatalogueIfNeeded(); }
+      catch(err){ console.error('Property catalogue restore failed:', err); }
       unlock();
     }else{
       localStorage.removeItem(ADMIN_FLAG);
@@ -1588,7 +1647,13 @@ async function initAdmin(){
     const password = clean($('#adminPassword')?.value);
     if(code !== ADMIN_CODE){ showToast(t('admin.badCode')); return; }
     if(window.MeradeDB?.enabled && email && password){
-      try{ await window.MeradeDB.signIn(email, password); await loadDatabaseProperties(); DB_STATUS = 'connected'; }
+      try{
+        await window.MeradeDB.signIn(email, password);
+        await loadDatabaseProperties();
+        DB_STATUS = 'connected';
+        const restored = await restorePropertyCatalogueIfNeeded();
+        if(restored) showToast('10 properties restored.');
+      }
       catch(err){ console.error(err); showToast(err.message || 'Supabase admin login failed. Check email/password.'); return; }
     } else if(window.MeradeDB?.enabled && (!email || !password)) {
       DB_STATUS = 'local';

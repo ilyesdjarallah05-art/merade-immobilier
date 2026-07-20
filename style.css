@@ -1214,6 +1214,105 @@ html[lang="ar"] .home-page .home-bottom-card .title{
   letter-spacing:0!important
 }
 
+/* v49 — numbered, icon-led property information panel */
+.detail-heading{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:14px
+}
+.detail-reference{
+  display:inline-grid;
+  place-items:center;
+  min-width:42px;
+  min-height:28px;
+  padding:4px 9px;
+  border-radius:999px;
+  background:#111;
+  color:#fff;
+  font-variant-numeric:tabular-nums;
+  letter-spacing:.04em
+}
+.detail-price,
+.detail-location{
+  display:flex;
+  align-items:center;
+  gap:10px
+}
+.detail-inline-icon,
+.detail-item-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  color:#151515
+}
+.detail-inline-icon svg{
+  width:19px;
+  height:19px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.65;
+  stroke-linecap:round;
+  stroke-linejoin:round
+}
+.detail-list{
+  border-top:1px solid #d8d8d5
+}
+.detail-item{
+  display:grid;
+  grid-template-columns:30px 22px minmax(0,1fr);
+  align-items:center;
+  gap:10px;
+  padding:13px 0;
+  border-bottom:1px solid #d8d8d5
+}
+.detail-item-number{
+  color:#9b9b96;
+  font-size:.66rem;
+  font-weight:800;
+  line-height:1;
+  font-variant-numeric:tabular-nums;
+  letter-spacing:.06em
+}
+.detail-item-icon svg{
+  width:19px;
+  height:19px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.55;
+  stroke-linecap:round;
+  stroke-linejoin:round
+}
+.detail-item-copy{
+  display:grid;
+  min-width:0;
+  gap:3px
+}
+.detail-item-copy small{
+  line-height:1.25
+}
+.detail-item-copy strong{
+  max-width:none;
+  text-align:start;
+  line-height:1.35
+}
+.is-rtl .detail-item-copy strong{
+  text-align:right
+}
+@media(max-width:620px){
+  .detail-item{
+    grid-template-columns:26px 20px minmax(0,1fr);
+    gap:9px;
+    padding:12px 0
+  }
+  .detail-item-icon svg,
+  .detail-inline-icon svg{
+    width:18px;
+    height:18px
+  }
+}
+
 /* v44 — section-level phone performance guards */
 @media(max-width:760px){
   .home-page .home-showcase.hero-scroll-finished .hero-sticky-stage{
