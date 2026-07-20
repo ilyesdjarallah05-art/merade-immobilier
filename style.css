@@ -1214,6 +1214,15 @@ html[lang="ar"] .home-page .home-bottom-card .title{
   letter-spacing:0!important
 }
 
+/* Keep a lone search/listing result at the same desktop scale as a three-card row. */
+@media(min-width:761px){
+  .grid > .property-card:only-child{
+    width:100%;
+    max-width:calc((100% - 44px) / 3);
+    justify-self:start;
+  }
+}
+
 /* v49 — numbered, icon-led property information panel */
 .detail-heading{
   display:flex;

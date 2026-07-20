@@ -307,13 +307,17 @@
     return parsed.data;
   }
   const SUMMARY_SELECT = [
-    'id','title','category','status','wilaya','commune','address','price','currency','rental_period',
+    'id','title','category','status','wilaya','commune','address','price','currency',
     'surface','land_surface','rooms','bedrooms','bathrooms','floor','year_built','phone',
     'description','translations','features','images','featured','hero_featured','hero_order','is_published','has_virtual_tour',
     'virtual_tour_type','virtual_tour_url','virtual_tour_rooms','created_at'
   ].join(',');
   let translationsColumnAvailable = null;
-  let rentalPeriodColumnAvailable = null;
+  // Rental periods are safely kept in translations._meta.rentPeriod as well.
+  // Start in compatibility mode because older projects may not yet have the
+  // optional rental_period column. This prevents an avoidable 400 on every
+  // public page while preserving the rent-period feature.
+  let rentalPeriodColumnAvailable = false;
   function optionalColumnMissing(err, column){
     const message = clean(err?.message).toLowerCase();
     return message.includes(column.toLowerCase()) && /(schema cache|column|does not exist)/i.test(message);
